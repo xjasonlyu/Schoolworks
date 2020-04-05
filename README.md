@@ -1,5 +1,5 @@
 # SchoolWorks
 
-Undergraduate Assignments/Works/Scripts.
+HDU Undergraduate Assignments/Works/Scripts.
 
 > Inspired by [oyiadin](https://github.com/oyiadin/Schoolworks)
