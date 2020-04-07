@@ -61,9 +61,9 @@ static int __init pstree_init(void)
 
   // show self info
   if (l_sibling == 0)
-    show_process_info("\t└─[self]", task);
+    show_process_info("\t\t└─[self]", task);
   else
-    show_process_info("\t├─[self]", task);
+    show_process_info("\t\t├─[self]", task);
 
 /*
 Refer: https://stackoverflow.com/questions/34704761/why-sibling-list-is-used-to-get-the-task-struct-while-fetching-the-children-of-a
@@ -84,14 +84,14 @@ Usage of list_entry for sibling means what sibling is a list entry.
 
     if (l_sibling == 0)
       if (count != l_children)
-        show_process_info("\t \t├─[children]", child);
+        show_process_info("\t\t \t├─[children]", child);
       else
-        show_process_info("\t \t└─[children]", child);
+        show_process_info("\t\t \t└─[children]", child);
     else
       if (count != l_children)
-        show_process_info("\t│\t├─[children]", child);
+        show_process_info("\t\t│\t├─[children]", child);
       else
-        show_process_info("\t│\t└─[children]", child);
+        show_process_info("\t\t│\t└─[children]", child);
   }
 
   // show sibling info
@@ -104,9 +104,9 @@ Usage of list_entry for sibling means what sibling is a list entry.
       continue;
 
     if (count != l_sibling)
-      show_process_info("\t├─[sibling]", child);
+      show_process_info("\t\t├─[sibling]", child);
     else
-      show_process_info("\t└─[sibling]", child);
+      show_process_info("\t\t└─[sibling]", child);
   }
 
 out:

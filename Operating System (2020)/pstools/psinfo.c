@@ -2,6 +2,7 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
+#include <linux/sched/prio.h>
 #include <linux/sched/signal.h>
 
 #define _cmd(task) \
@@ -18,8 +19,10 @@
 // 2. static_prio 静态优先级
 // 3. normal_prio 归一化优先级
 // 4. rt_priority 实时优先级
+// alias to task_prio
+// Refer: https://unix.stackexchange.com/questions/482197/the-pri-column-of-ps-is-inconsistent-with-man-pages
 #define _prio(task) \
-  ((task)->prio) /* priority */
+  (((task)->prio) - MAX_RT_PRIO) /* priority */
 
 #define _state(task) \
   ((task)->state) /* -1 unrunnable, 0 runnable, >0 stopped: */
@@ -38,7 +41,7 @@
                 (_state(task) > 0 ? "runnable" : "unrunnable")))))))))
 
 #define show_title(level) \
-  printk(level "PID\tPPID\tPRIO\tSTATE\tSTATE INFO\tCMD\n")
+  printk(level "PID\tPPID\tPRIO\tSTAT\t%-15s\tCMD\n", "DESC")
 
 #define show_process_info(level, task) \
   printk(level "%d\t%4d\t%4d\t%5ld\t%-15s\t%s\n", \
