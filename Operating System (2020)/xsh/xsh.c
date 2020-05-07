@@ -4,10 +4,14 @@
 #include <string.h>
 #include <signal.h>
 #include <errno.h>
+#include <fcntl.h>
 #include "helper.h"
 
 // number of children
 static int pcount = 0;
+
+char *fredir = {0};
+static int fmode = RE_DEFAULT_MODE;
 
 // global variables
 char buf[0x1000] = {0};
@@ -17,6 +21,8 @@ char **commands[0x0fff] = {0};
 #define clear_buffer()                           \
     do                                           \
     {                                            \
+        fredir = NULL;                           \
+        fmode = RE_DEFAULT_MODE;                 \
         memset(buf, 0, sizeof(buf));             \
         memset(arguments, 0, sizeof(arguments)); \
         memset(commands, 0, sizeof(commands));   \
@@ -43,7 +49,7 @@ int init_shell(void)
 
     while (fgets(buf, sizeof(buf), fp) != NULL)
     {
-        if (parse_commands(buf, arguments, commands) <= 0)
+        if (parse_commands(buf, arguments, commands, &fredir, &fmode) <= 0)
             continue;
 
         if (process() < 0)
@@ -77,11 +83,24 @@ int process(void)
     pcount = 0;
     const size_t cmdlen = lenof(commands);
 
-    int input = 0;
-    int mode = FIRST_CMD;
-
     if (!cmdlen)
         goto out;
+
+    int input = STDIN_FILENO;
+    int output = STDOUT_FILENO;
+    int mode = FIRST_CMD;
+
+    // redirect fd exists
+    if (fredir != NULL && strlen(fredir) > 0)
+    {
+        output = open(fredir, fmode);
+
+        if (output < 0)
+        {
+            fprintf(stderr, "Cannot open file: %s\n", fredir);
+            goto out;
+        }
+    }
 
     for (int i = 0; i < cmdlen; i++)
     {
@@ -95,7 +114,7 @@ int process(void)
         if (retval == NON_BUILTIN)
         {
             // excute as external command
-            retval = excute(commands[i], &input, mode);
+            retval = excute(commands[i], mode, &input, &output);
             if (retval == 0)
                 pcount++;
         }
@@ -103,6 +122,10 @@ int process(void)
 
     // wait all children processes to complete
     waitn(pcount);
+
+    // close opened file
+    if (output != STDOUT_FILENO)
+        close(output);
 
 out:
     return retval;
@@ -122,7 +145,7 @@ int parse(void)
     if (retval <= 0)
         goto out;
 
-    retval = parse_commands(buf, arguments, commands);
+    retval = parse_commands(buf, arguments, commands, &fredir, &fmode);
 
 out:
     if (retval < 0)

@@ -2,6 +2,7 @@
 #define _XSH_HELPER_H_
 
 #include <stdlib.h>
+#include <fcntl.h>
 
 #define NON_ERROR 0x00
 #define NON_BUILTIN 0x01
@@ -13,11 +14,15 @@
 #define READ_END 0x00
 #define WRITE_END 0x01
 
+#define RE_WRITE_MODE (O_WRONLY | O_CREAT | O_TRUNC)
+#define RE_APPEND_MODE (O_WRONLY | O_CREAT | O_APPEND)
+#define RE_DEFAULT_MODE RE_WRITE_MODE
+
 #define die(code, msg) \
     do                 \
     {                  \
         puts((msg));   \
-        _exit((code));  \
+        _exit((code)); \
     } while (0)
 
 #define lenof(p) __lenof__((void **)(p))
@@ -30,12 +35,12 @@ void waitn(int);
 
 int read_line(char *, size_t);
 
-int excute(char **, int *, int);
+int excute(char **, int, int *, int *);
 
 int excute_builtin(char **);
 
 int parse_arguments(char *, char **);
 
-int parse_commands(char *, char **, char ***);
+int parse_commands(char *, char **, char ***, char **, int *);
 
 #endif

@@ -116,7 +116,7 @@ void waitn(int n)
         wait(NULL);
 }
 
-int excute(char **argv, int *input, int mode)
+int excute(char **argv, int mode, int *input, int *output)
 {
     int fd[2];
 
@@ -142,6 +142,7 @@ int excute(char **argv, int *input, int mode)
             break;
         case LAST_CMD:
             dup2(*input, STDIN_FILENO);
+            dup2(*output, STDOUT_FILENO);
             break;
         }
 
@@ -155,7 +156,7 @@ int excute(char **argv, int *input, int mode)
         }
     }
 
-    if (*input != 0)
+    if (*input != STDIN_FILENO)
         close(*input);
 
     // Nothing more needs to be written
@@ -168,7 +169,7 @@ int excute(char **argv, int *input, int mode)
     *input = fd[READ_END];
 
     // 0
-    return 0;
+    return NON_ERROR;
 }
 
 int excute_builtin(char **argv)
@@ -205,7 +206,8 @@ int parse_arguments(char *buf, char **argv)
 
     while (*pbuf != '\0') /* if not the end of line */
     {
-        while (*pbuf == ' ' || *pbuf == '\t' || *pbuf == '\r' || *pbuf == '\n')
+        while (*pbuf == ' ' || *pbuf == '\t' ||
+               *pbuf == '\r' || *pbuf == '\n')
             *pbuf++ = '\0'; /* replace white spaces with 0 */
         if (*pbuf != '\0')
             *pargv++ = pbuf; /* save the argument position */
@@ -218,12 +220,47 @@ int parse_arguments(char *buf, char **argv)
     return lenof(argv);
 }
 
-int parse_commands(char *buf, char **argv, char ***cmds)
+int parse_commands(char *buf, char **argv, char ***cmds, char **redir, int *mode)
 {
     char *pbuf = buf;
-    char *next = strchr(pbuf, '|');
     char **pargv = argv;
     char ***pcmds = cmds;
+
+    char *next = strchr(pbuf, '|');
+    char *predir = strchr(pbuf, '>');
+
+    if (predir != NULL)
+    {
+        *predir++ = '\0';
+
+        // >> for append mode
+        if (*predir == '>')
+        {
+            *mode = RE_APPEND_MODE;
+            *predir++ = '\0';
+        }
+        else
+        {
+            *mode = RE_WRITE_MODE;
+        }
+
+        while (*predir != '\0')
+        {
+            // remove white spaces
+            if (*predir == ' ' || *predir == '\t' ||
+                *predir == '\r' || *predir == '\n')
+                *predir = '\0';
+            if (*redir == NULL && *predir != '\0')
+                *redir = predir;
+            predir++;
+        }
+
+        if (*redir == NULL || !strlen(*redir))
+        {
+            fprintf(stderr, "invalid fd redirect\n");
+            return 0;
+        }
+    }
 
     while (1)
     {
