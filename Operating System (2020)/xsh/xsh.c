@@ -93,7 +93,7 @@ int process(void)
     // redirect fd exists
     if (fredir != NULL && strlen(fredir) > 0)
     {
-        output = open(fredir, fmode);
+        output = open(fredir, fmode, 0644);
 
         if (output < 0)
         {
