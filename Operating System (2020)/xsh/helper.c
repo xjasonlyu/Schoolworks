@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
@@ -56,6 +57,7 @@ int read_line(char *buf, size_t size)
 {
     int n = 0;
     int flag = 0;
+    bool first = true;
     char *pbuf = buf;
 
     while (1)
@@ -67,6 +69,14 @@ int read_line(char *buf, size_t size)
 
         if (*pbuf == '\n' || pbuf - buf >= size)
             break;
+
+        // comment support
+        if (first && *pbuf == '#')
+        {
+            // eat rest buffer
+            while (getchar() != '\n');
+            return 0;
+        }
 
         if (*pbuf == '\033')
             flag = 1;
@@ -90,6 +100,9 @@ int read_line(char *buf, size_t size)
             }
         }
 
+        if (*pbuf != ' ' && *pbuf != '\t' &&
+            *pbuf != '\r' && *pbuf != '\0')
+            first = false;
         pbuf++;
     }
 
