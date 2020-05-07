@@ -43,7 +43,9 @@ int init_shell(void)
 
     while (fgets(buf, sizeof(buf), fp) != NULL)
     {
-        parse_commands(buf, arguments, commands);
+        if (parse_commands(buf, arguments, commands) <= 0)
+            continue;
+
         if (process() < 0)
             goto out;
 
