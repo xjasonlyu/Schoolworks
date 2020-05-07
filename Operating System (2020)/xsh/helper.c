@@ -125,9 +125,9 @@ int excute(char **argv, int *input, int mode)
     pid_t pid = fork();
 
     /*
-	 SCHEME:
-	 	STDIN --> O --> O --> O --> STDOUT
-	*/
+        SCHEME:
+            STDIN --> O --> O --> O --> STDOUT
+    */
 
     if (pid == 0)
     {
