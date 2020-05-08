@@ -15,6 +15,14 @@
 #define READ_END 0x00
 #define WRITE_END 0x01
 
+#define C_RED "\033[0;31m"
+#define C_GREEN "\033[0;32m"
+#define C_YELLOW "\033[0;33m"
+#define C_BLUE "\033[0;34m"
+#define C_MAGENTA "\033[0;35m"
+#define C_CYAN "\033[0;36m"
+#define C_RESET "\033[0m"
+
 #define RE_WRITE_MODE (O_WRONLY | O_CREAT | O_TRUNC)
 #define RE_APPEND_MODE (O_WRONLY | O_CREAT | O_APPEND)
 #define RE_DEFAULT_MODE RE_WRITE_MODE

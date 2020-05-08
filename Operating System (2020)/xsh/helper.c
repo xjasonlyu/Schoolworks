@@ -7,6 +7,8 @@
 #include <errno.h>
 #include "helper.h"
 
+#define BLKSIZE 0xFF
+
 #define GETDIR(dir)                    \
     ((dir) == NULL) ? getenv("HOME") : \
     ((strcmp((dir), "~") == 0) ?       \
@@ -33,22 +35,28 @@ size_t __lenof__(void **p)
 
 void show_prompt(int code)
 {
+    static char buffer[BLKSIZE * 4] = {0};
+    static char *cwd = buffer + BLKSIZE * 0;
+    static char *user = buffer + BLKSIZE * 1;
+    static char *home = buffer + BLKSIZE * 2;
+    static char *host = buffer + BLKSIZE * 3;
+
     int uid = 0;
-    char cwd[0xff] = {0}, *pcwd = cwd;
-    char user[0xff] = {0};
-    char home[0xff] = {0};
-    char hostname[0xff] = {0};
+    char *pcwd = cwd;
+
+    // clear buffer
+    memset(buffer, 0, sizeof(buffer));
 
     // uid
     uid = getuid();
     // cwd
-    getcwd(cwd, sizeof(cwd) - 1);
+    getcwd(cwd, BLKSIZE - 1);
     // user
-    strncpy(user, getenv("USER"), sizeof(user) - 1);
+    strncpy(user, getenv("USER"), BLKSIZE - 1);
     // home
-    strncpy(home, getenv("HOME"), sizeof(home) - 1);
+    strncpy(home, getenv("HOME"), BLKSIZE - 1);
     // hostname
-    gethostname(hostname, sizeof(hostname) - 1);
+    gethostname(host, BLKSIZE - 1);
 
     if (strncmp(cwd, home, strlen(home)) == 0)
     {
@@ -64,12 +72,14 @@ void show_prompt(int code)
         }
     }
 
-    if (!code)
-        fprintf(stdout, "%s@%s (%s) %c> ",
-                user, hostname, pcwd, (uid == 0) ? '$' : '#');
-    else
-        fprintf(stdout, "%s@%s (%s) [%d] %c> ",
-                user, hostname, pcwd, code, (uid == 0) ? '$' : '#');
+    fprintf(stdout, "%s%s" C_RESET "@%s " C_GREEN "(%s)" C_RESET " ",
+            ((uid == 0) ? C_RED : C_GREEN), user, host, pcwd);
+
+    if (code)
+        fprintf(stdout, C_RED "[%d] " C_RESET, code);
+
+    fprintf(stdout, "%c> ", ((uid == 0) ? '$' : '#'));
+
     fflush(stdout);
 }
 
@@ -181,9 +191,9 @@ int execute(char **argv, int mode, int *input, int *output)
         if (execvp(argv[0], argv) != 0)
         {
             if (errno == ENOENT)
-                fprintf(stderr, "Command not found: %s\n", argv[0]);
+                fprintf(stderr, C_RED "Command not found: %s\n" C_RESET, argv[0]);
             else
-                fprintf(stderr, "exec: %s\n", strerror(errno));
+                fprintf(stderr, C_RED "exec: %s\n" C_RESET, strerror(errno));
             _exit(EXIT_FAILURE);
         }
     }
