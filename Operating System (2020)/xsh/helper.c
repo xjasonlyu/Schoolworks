@@ -5,7 +5,6 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <errno.h>
-#include <sys/wait.h>
 #include "helper.h"
 
 #define GETDIR(dir)                    \
@@ -32,7 +31,7 @@ size_t __lenof__(void **p)
     return n;
 }
 
-void show_promot(void)
+void show_promot(int code)
 {
     int uid = 0;
     char cwd[0xff] = {0}, *pcwd = cwd;
@@ -65,8 +64,12 @@ void show_promot(void)
         }
     }
 
-    fprintf(stdout, "%s@%s [%s] %c> ",
-            user, hostname, pcwd, (uid == 0) ? '$' : '#');
+    if (!code)
+        fprintf(stdout, "%s@%s [%s] %c> ",
+                user, hostname, pcwd, (uid == 0) ? '$' : '#');
+    else
+        fprintf(stdout, "%s@%s [%s] (%d) %c> ",
+                user, hostname, pcwd, code, (uid == 0) ? '$' : '#');
     fflush(stdout);
 }
 
@@ -140,12 +143,6 @@ int read_line(char *buf, size_t size)
     //     _exit(EXIT_SUCCESS); /* error occurs or EOF */
 
     return n;
-}
-
-void waitn(int n)
-{
-    for (int i = 0; i < n; i++)
-        wait(NULL);
 }
 
 int excute(char **argv, int mode, int *input, int *output)

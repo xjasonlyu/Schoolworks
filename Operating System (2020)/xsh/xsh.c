@@ -5,11 +5,16 @@
 #include <signal.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <sys/wait.h>
 #include "helper.h"
 
 // number of children
 static int pcount = 0;
 
+// last subprocess exit code
+static int last_retval = 0;
+
+// redirect file descreption
 char *fredir = {0};
 static int fmode = RE_DEFAULT_MODE;
 
@@ -18,7 +23,7 @@ char buf[0x1000] = {0};
 char *arguments[0x0fff] = {0};
 char **commands[0x0fff] = {0};
 
-#define clear_buffer()                           \
+#define CLEANUP()                                \
     do                                           \
     {                                            \
         fredir = NULL;                           \
@@ -26,6 +31,17 @@ char **commands[0x0fff] = {0};
         memset(buf, 0, sizeof(buf));             \
         memset(arguments, 0, sizeof(arguments)); \
         memset(commands, 0, sizeof(commands));   \
+    } while (0)
+
+#define WAITN(n)                                                 \
+    do                                                           \
+    {                                                            \
+        for (int i = 0; i < (n); i++)                            \
+        {                                                        \
+            if (wait(&last_retval) == -1 && errno)               \
+                fprintf(stderr, "wait: %s\n", strerror(-errno)); \
+            last_retval = WEXITSTATUS(last_retval);              \
+        }                                                        \
     } while (0)
 
 // parse command in buf
@@ -55,7 +71,7 @@ int init_shell(void)
         if (process() < 0)
             goto out;
 
-        clear_buffer();
+        CLEANUP();
     }
 
     fclose(fp);
@@ -73,7 +89,7 @@ void sig_handler(int signo)
         return;
 
     putchar('\n');
-    show_promot();
+    show_promot(last_retval);
 }
 
 int process(void)
@@ -123,7 +139,7 @@ int process(void)
     }
 
     // wait all children processes to complete
-    waitn(pcount);
+    WAITN(pcount);
 
     // close opened file
     if (output != STDOUT_FILENO)
@@ -138,7 +154,7 @@ int parse(void)
     int retval = -EFAULT;
 
     // clear global variables
-    clear_buffer();
+    CLEANUP();
 
     // set to zero
     pcount = 0;
@@ -167,7 +183,7 @@ int main()
 
     while (1)
     {
-        show_promot(); /* print shell promot */
+        show_promot(last_retval); /* print shell promot */
 
         if ((parse()) <= 0)
             continue; /* ignore */

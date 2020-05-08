@@ -30,9 +30,7 @@
 
 size_t __lenof__(void **);
 
-void show_promot(void);
-
-void waitn(int);
+void show_promot(int);
 
 int read_line(char *, size_t);
 
