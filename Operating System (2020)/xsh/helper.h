@@ -34,9 +34,9 @@ void show_promot(int);
 
 int read_line(char *, size_t);
 
-int excute(char **, int, int *, int *);
+int execute(char **, int, int *, int *);
 
-int excute_builtin(char **);
+int execute_builtin(char **);
 
 int parse_arguments(char *, char **);
 

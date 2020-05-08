@@ -145,7 +145,7 @@ int read_line(char *buf, size_t size)
     return n;
 }
 
-int excute(char **argv, int mode, int *input, int *output)
+int execute(char **argv, int mode, int *input, int *output)
 {
     if (!isprintable(argv[0]))
         return EX_INVALID;
@@ -204,7 +204,7 @@ int excute(char **argv, int mode, int *input, int *output)
     return EX_SUCCESS;
 }
 
-int excute_builtin(char **argv)
+int execute_builtin(char **argv)
 {
     int retval = EX_SUCCESS;
     if (strcmp(argv[0], "exit") == 0)

@@ -126,11 +126,11 @@ int process(void)
             mode = MIDDLE_CMD;
 
         // try if built-in first
-        retval = excute_builtin(commands[i]);
+        retval = execute_builtin(commands[i]);
         if (retval == EX_BUILTIN)
         {
-            // excute as external command
-            retval = excute(commands[i], mode, &input, &output);
+            // execute as external command
+            retval = execute(commands[i], mode, &input, &output);
             if (retval == EX_SUCCESS)
                 pcount++;
             else
