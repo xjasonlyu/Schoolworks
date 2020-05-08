@@ -68,16 +68,15 @@ int init_shell(void)
         if (parse_commands(buf, arguments, commands, &fredir, &fmode) <= 0)
             continue;
 
-        if (process() < 0)
-            goto out;
+        if (process() < 0); /* do nothing */
 
         CLEANUP();
     }
 
-    fclose(fp);
-
 out:
-    return 0; /* do nothing */
+    if (fp != NULL)
+        fclose(fp); /* close opened file */
+    return 0;
 }
 
 void sig_handler(int signo)
