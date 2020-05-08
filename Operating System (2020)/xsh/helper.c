@@ -111,14 +111,14 @@ int read_line(char *buf, size_t size)
             case 'B':
             case 'C':
             case 'D':
-                // ignore input
+                /* ignore input */
                 pbuf -= 3;
-                // return 0;
-                break;
+                /* fallthrough */
             default:
+                /* set flag to zero */
                 flag = 0;
-                break;
                 /* ignore others */
+                break;
             }
         }
 
