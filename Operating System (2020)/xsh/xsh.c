@@ -68,7 +68,8 @@ int init_shell(void)
         if (parse_commands(buf, arguments, commands, &fredir, &fmode) <= 0)
             continue;
 
-        if (process() < 0); /* do nothing */
+        if (process() < 0)
+            ; /* do nothing */
 
         CLEANUP();
     }

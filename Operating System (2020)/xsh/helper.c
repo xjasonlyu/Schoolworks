@@ -65,10 +65,10 @@ void show_promot(int code)
     }
 
     if (!code)
-        fprintf(stdout, "%s@%s [%s] %c> ",
+        fprintf(stdout, "%s@%s (%s) %c> ",
                 user, hostname, pcwd, (uid == 0) ? '$' : '#');
     else
-        fprintf(stdout, "%s@%s [%s] (%d) %c> ",
+        fprintf(stdout, "%s@%s (%s) [%d] %c> ",
                 user, hostname, pcwd, code, (uid == 0) ? '$' : '#');
     fflush(stdout);
 }
