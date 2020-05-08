@@ -4,8 +4,9 @@
 #include <stdlib.h>
 #include <fcntl.h>
 
-#define NON_ERROR 0x00
-#define NON_BUILTIN 0x01
+#define EX_SUCCESS 0x00
+#define EX_BUILTIN 0x01
+#define EX_INVALID 0x02
 
 #define FIRST_CMD 0x01
 #define MIDDLE_CMD 0x02

@@ -3,9 +3,26 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
+#include <ctype.h>
 #include <errno.h>
 #include <sys/wait.h>
 #include "helper.h"
+
+#define GETDIR(dir)                    \
+    ((dir) == NULL) ? getenv("HOME") : \
+    ((strcmp((dir), "~") == 0) ?       \
+    getenv("HOME") : (dir))) == -1
+
+static bool isprintable(char *str)
+{
+    char *ptr = str;
+    while (*ptr != '\0')
+    {
+        if (!isprint(*ptr++))
+            return false;
+    }
+    return true;
+}
 
 size_t __lenof__(void **p)
 {
@@ -74,7 +91,8 @@ int read_line(char *buf, size_t size)
         if (first && *pbuf == '#')
         {
             // eat rest buffer
-            while (getchar() != '\n');
+            while (getchar() != '\n')
+                ;
             return 0;
         }
 
@@ -91,8 +109,9 @@ int read_line(char *buf, size_t size)
             case 'C':
             case 'D':
                 // ignore input
-                fseek(stdin, 0, SEEK_END);
-                return 0;
+                pbuf -= 3;
+                // return 0;
+                break;
             default:
                 flag = 0;
                 break;
@@ -131,6 +150,9 @@ void waitn(int n)
 
 int excute(char **argv, int mode, int *input, int *output)
 {
+    if (!isprintable(argv[0]))
+        return EX_INVALID;
+
     int fd[2];
 
     /* Invoke pipe */
@@ -182,12 +204,12 @@ int excute(char **argv, int mode, int *input, int *output)
     *input = fd[READ_END];
 
     // 0
-    return NON_ERROR;
+    return EX_SUCCESS;
 }
 
 int excute_builtin(char **argv)
 {
-    int retval = NON_ERROR;
+    int retval = EX_SUCCESS;
     if (strcmp(argv[0], "exit") == 0)
     {
         if (argv[1] != NULL)
@@ -196,17 +218,20 @@ int excute_builtin(char **argv)
     }
     else if (strcmp(argv[0], "cd") == 0)
     {
-        if (chdir((argv[1] == NULL) ?
-            getenv("HOME") : ((strcmp(argv[1], "~") == 0) ?
-            getenv("HOME") : argv[1])) == -1)
+        if (chdir(GETDIR(argv[1]))
         {
             fprintf(stderr, "cd: %s\n", strerror(errno));
             retval = errno;
         }
     }
+    else if (*argv[0] == '#')
+    {
+        // ignore comments
+        ;
+    }
     else
     {
-        retval = NON_BUILTIN;
+        retval = EX_BUILTIN;
     }
 
     return retval;

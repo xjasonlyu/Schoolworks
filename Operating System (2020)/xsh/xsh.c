@@ -111,12 +111,14 @@ int process(void)
 
         // try if built-in first
         retval = excute_builtin(commands[i]);
-        if (retval == NON_BUILTIN)
+        if (retval == EX_BUILTIN)
         {
             // excute as external command
             retval = excute(commands[i], mode, &input, &output);
-            if (retval == 0)
+            if (retval == EX_SUCCESS)
                 pcount++;
+            else
+                break;
         }
     }
 
