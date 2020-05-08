@@ -31,7 +31,7 @@ size_t __lenof__(void **p)
     return n;
 }
 
-void show_promot(int code)
+void show_prompt(int code)
 {
     int uid = 0;
     char cwd[0xff] = {0}, *pcwd = cwd;

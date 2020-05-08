@@ -89,7 +89,7 @@ void sig_handler(int signo)
         return;
 
     putchar('\n');
-    show_promot(last_retval);
+    show_prompt(last_retval);
 }
 
 int process(void)
@@ -183,7 +183,7 @@ int main()
 
     while (1) /* infinite loop */
     {
-        show_promot(last_retval); /* print shell promot */
+        show_prompt(last_retval); /* print shell prompt */
 
         if ((parse()) <= 0)
             continue; /* ignore */
