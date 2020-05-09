@@ -95,7 +95,10 @@ int read_line(char *buf, size_t size)
         *pbuf = getchar();
 
         if (*pbuf == EOF)
+        {
+            putchar('\n'); /* newline */
             _exit(EXIT_SUCCESS); /* exit on EOF */
+        }
 
         if (*pbuf == '\n' || pbuf - buf >= size)
             break;
