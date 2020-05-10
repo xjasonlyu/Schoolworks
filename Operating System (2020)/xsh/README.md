@@ -13,3 +13,4 @@
 - Last Subprocess Status
 - Stdin/Stdout Pipelines
 - Stdout Redirection
+- Builtin: `cd` `exec` `exit` `help`
