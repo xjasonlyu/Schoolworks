@@ -1,10 +1,11 @@
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <signal.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 #include "helper.h"
 
@@ -12,16 +13,16 @@
 static int pcount = 0;
 
 // last subprocess exit code
-static int last_retval = 0;
+int last_retval = 0;
 
 // redirect file descreption
 char *fredir = {0};
-static int fmode = RE_DEFAULT_MODE;
+int fmode = RE_DEFAULT_MODE;
 
 // global variables
-char buf[0x1000] = {0};
-char *arguments[0x0fff] = {0};
-char **commands[0x0fff] = {0};
+char buf[BUFSIZE] = {0};
+char *arguments[BUFSIZE] = {0};
+char **commands[BUFSIZE] = {0};
 
 #define CLEANUP()                                \
     do                                           \
@@ -63,9 +64,9 @@ int init_shell(void)
     if (fp == NULL)
         goto out;
 
-    while (fgets(buf, sizeof(buf), fp) != NULL)
+    while (read_line(fp) != EOF)
     {
-        if (parse_commands(buf, arguments, commands, &fredir, &fmode) <= 0)
+        if (parse_commands() <= 0)
             continue;
 
         if (process() < 0)
@@ -89,7 +90,7 @@ void sig_handler(int signo)
         return;
 
     putchar('\n');
-    show_prompt(last_retval);
+    show_prompt();
 }
 
 int process(void)
@@ -109,7 +110,7 @@ int process(void)
     // redirect fd exists
     if (fredir != NULL && strlen(fredir) > 0)
     {
-        output = open(fredir, fmode, 0644);
+        output = open(fredir, fmode, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
         if (output < 0)
         {
@@ -159,11 +160,14 @@ int parse(void)
     // set to zero
     pcount = 0;
 
-    retval = read_line(buf, sizeof(buf) - 1);
+    if ((retval = read_line(stdin)) == EOF)
+        _exit(EXIT_SUCCESS); /* exit on EOF */
+
     if (retval <= 0)
         goto out;
 
     retval = parse_commands(buf, arguments, commands, &fredir, &fmode);
+    retval = parse_commands();
 
 out:
     if (retval < 0)
@@ -183,7 +187,7 @@ int main()
 
     while (1) /* infinite loop */
     {
-        show_prompt(last_retval); /* print shell prompt */
+        show_prompt(); /* print shell prompt */
 
         if ((parse()) <= 0)
             continue; /* ignore */

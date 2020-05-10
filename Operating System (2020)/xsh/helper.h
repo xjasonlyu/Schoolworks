@@ -1,8 +1,12 @@
 #ifndef _XSH_HELPER_H_
 #define _XSH_HELPER_H_
 
-#include <stdlib.h>
 #include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
+#define BUFSIZE 0xFFFF
 
 #define EX_SUCCESS 0x00
 #define EX_BUILTIN 0x01
@@ -14,6 +18,9 @@
 
 #define READ_END 0x00
 #define WRITE_END 0x01
+
+#define BUILTIN_CMD_CD "cd"
+#define BUILTIN_CMD_EXIT "exit"
 
 #define C_RED "\033[0;31m"
 #define C_GREEN "\033[0;32m"
@@ -36,18 +43,31 @@
 
 #define lenof(p) __lenof__((void **)(p))
 
+extern int last_retval;
+
+extern int fmode;
+extern char *fredir;
+
+extern char buf[BUFSIZE];
+extern char *arguments[BUFSIZE];
+extern char **commands[BUFSIZE];
+
+static bool isprintable(char *);
+
+static int parse_arguments(char *, char **);
+
+static const char *parse_dir(const char *);
+
 size_t __lenof__(void **);
 
-void show_prompt(int);
+void show_prompt(void);
 
-int read_line(char *, size_t);
+int read_line(FILE *);
 
 int execute(char **, int, int *, int *);
 
 int execute_builtin(char **);
 
-int parse_arguments(char *, char **);
-
-int parse_commands(char *, char **, char ***, char **, int *);
+int parse_commands(void);
 
 #endif

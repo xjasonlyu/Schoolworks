@@ -9,11 +9,6 @@
 
 #define BLKSIZE 0xFF
 
-#define GETDIR(dir)                    \
-    ((dir) == NULL) ? getenv("HOME") : \
-    ((strcmp((dir), "~") == 0) ?       \
-    getenv("HOME") : (dir))) == -1
-
 static bool isprintable(char *str)
 {
     char *ptr = str;
@@ -25,6 +20,26 @@ static bool isprintable(char *str)
     return true;
 }
 
+static const char *parse_dir(const char *pdir)
+{
+    static char dirname[BLKSIZE] = {0};
+
+    char *homedir = getenv("HOME");
+
+    memset(dirname, 0, BLKSIZE);
+
+    if (!pdir)
+        return homedir;
+
+    if (strncmp(pdir, "~", 1))
+        return pdir;
+
+    // new dirname
+    strncpy(dirname, homedir, BLKSIZE - 1);
+    strncat(dirname, ++pdir, BLKSIZE - strlen(dirname) - 1);
+    return dirname;
+}
+
 size_t __lenof__(void **p)
 {
     size_t n = 0;
@@ -33,7 +48,7 @@ size_t __lenof__(void **p)
     return n;
 }
 
-void show_prompt(int code)
+void show_prompt(void)
 {
     static char buffer[BLKSIZE * 4] = {0};
     static char *cwd = buffer + BLKSIZE * 0;
@@ -75,15 +90,15 @@ void show_prompt(int code)
     fprintf(stdout, "%s%s" C_RESET "@%s " C_GREEN "(%s)" C_RESET " ",
             ((uid == 0) ? C_RED : C_GREEN), user, host, pcwd);
 
-    if (code)
-        fprintf(stdout, C_RED "[%d] " C_RESET, code);
+    if (last_retval)
+        fprintf(stdout, C_RED "[%d] " C_RESET, last_retval);
 
     fprintf(stdout, "%c> ", ((uid == 0) ? '$' : '#'));
 
     fflush(stdout);
 }
 
-int read_line(char *buf, size_t size)
+int read_line(FILE *fp)
 {
     int n = 0;
     int flag = 0;
@@ -92,22 +107,22 @@ int read_line(char *buf, size_t size)
 
     while (1)
     {
-        *pbuf = getchar();
+        *pbuf = getc(fp);
 
         if (*pbuf == EOF)
         {
             putchar('\n'); /* newline */
-            _exit(EXIT_SUCCESS); /* exit on EOF */
+            return EOF;    /* EOF */
         }
 
-        if (*pbuf == '\n' || pbuf - buf >= size)
+        if (*pbuf == '\n' || pbuf - buf >= sizeof(buf))
             break;
 
         // comment support
         if (first && *pbuf == '#')
         {
             // eat rest buffer
-            while (getchar() != '\n')
+            while (getc(fp) != '\n')
                 ;
             return 0;
         }
@@ -220,15 +235,15 @@ int execute(char **argv, int mode, int *input, int *output)
 int execute_builtin(char **argv)
 {
     int retval = EX_SUCCESS;
-    if (strcmp(argv[0], "exit") == 0)
+    if (strcmp(argv[0], BUILTIN_CMD_EXIT) == 0)
     {
         if (argv[1] != NULL)
             retval = atoi(argv[1]);
         _exit(retval);
     }
-    else if (strcmp(argv[0], "cd") == 0)
+    else if (strcmp(argv[0], BUILTIN_CMD_CD) == 0)
     {
-        if (chdir(GETDIR(argv[1]))
+        if (chdir(parse_dir(argv[1])))
         {
             fprintf(stderr, "cd: %s\n", strerror(errno));
             retval = errno;
@@ -247,10 +262,10 @@ int execute_builtin(char **argv)
     return retval;
 }
 
-int parse_arguments(char *buf, char **argv)
+static int parse_arguments(char *__buf, char **__argv)
 {
-    char *pbuf = buf;
-    char **pargv = argv;
+    char *pbuf = __buf;
+    char **pargv = __argv;
 
     while (*pbuf != '\0') /* if not the end of line */
     {
@@ -265,14 +280,14 @@ int parse_arguments(char *buf, char **argv)
     }
     *pargv = NULL; /* mark the end of argument list */
 
-    return lenof(argv);
+    return lenof(__argv);
 }
 
-int parse_commands(char *buf, char **argv, char ***cmds, char **redir, int *mode)
+int parse_commands(void)
 {
     char *pbuf = buf;
-    char **pargv = argv;
-    char ***pcmds = cmds;
+    char **pargv = arguments;
+    char ***pcmds = commands;
 
     char *next = strchr(pbuf, '|');
     char *predir = strchr(pbuf, '>');
@@ -284,12 +299,12 @@ int parse_commands(char *buf, char **argv, char ***cmds, char **redir, int *mode
         // >> for append mode
         if (*predir == '>')
         {
-            *mode = RE_APPEND_MODE;
+            fmode = RE_APPEND_MODE;
             *predir++ = '\0';
         }
         else
         {
-            *mode = RE_WRITE_MODE;
+            fmode = RE_WRITE_MODE;
         }
 
         while (*predir != '\0')
@@ -298,12 +313,12 @@ int parse_commands(char *buf, char **argv, char ***cmds, char **redir, int *mode
             if (*predir == ' ' || *predir == '\t' ||
                 *predir == '\r' || *predir == '\n')
                 *predir = '\0';
-            if (*redir == NULL && *predir != '\0')
-                *redir = predir;
+            if (fredir == NULL && *predir != '\0')
+                fredir = predir;
             predir++;
         }
 
-        if (*redir == NULL || !strlen(*redir))
+        if (fredir == NULL || !strlen(fredir))
         {
             fprintf(stderr, "invalid fd redirect\n");
             return 0;
@@ -318,7 +333,7 @@ int parse_commands(char *buf, char **argv, char ***cmds, char **redir, int *mode
         // ignore empty
         if (!parse_arguments(pbuf, pargv))
         {
-            if ((pcmds - cmds) > 0)
+            if ((pcmds - commands) > 0)
                 fprintf(stderr, "invalid command\n");
             return 0;
         }
@@ -333,5 +348,5 @@ int parse_commands(char *buf, char **argv, char ***cmds, char **redir, int *mode
         next = strchr(pbuf, '|');
     }
 
-    return lenof(cmds);
+    return lenof(commands);
 }
