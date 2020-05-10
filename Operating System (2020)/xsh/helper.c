@@ -9,6 +9,31 @@
 
 #define BLKSIZE 0xFF
 
+#define EXEC(argv)                                                              \
+    do                                                                          \
+    {                                                                           \
+        if (execvp(*(argv), (argv)) != 0)                                       \
+        {                                                                       \
+            if (errno == ENOENT)                                                \
+                fprintf(stderr,                                                 \
+                        C_RED "xsh: command not found: %s\n" C_RESET, *(argv)); \
+            else                                                                \
+                fprintf(stderr,                                                 \
+                        C_RED "xsh: exec: %s\n" C_RESET, strerror(errno));      \
+            _exit(EXIT_FAILURE);                                                \
+        }                                                                       \
+    } while (0)
+
+#define PRINT_HELP_INFO()                                 \
+    do                                                    \
+    {                                                     \
+        printf("Builtin commands of xsh:\n");             \
+        printf("    help    show this help message\n");   \
+        printf("    cd      change directory\n");         \
+        printf("    exec    execute external command\n"); \
+        printf("    exit    quit xsh\n");                 \
+    } while (0)
+
 static bool isprintable(char *str)
 {
     char *ptr = str;
@@ -43,7 +68,7 @@ static const char *parse_dir(const char *pdir)
 size_t __lenof__(void **p)
 {
     size_t n = 0;
-    while (*p++ != NULL)
+    while (*p++)
         n++;
     return n;
 }
@@ -158,7 +183,7 @@ int read_line(FILE *fp)
 
     n = pbuf - buf;
 
-    // if (fgets(buf, size, stdin) != NULL)
+    // if (fgets(buf, size, stdin))
     // {
     //     n = strlen(buf);
     //     // removing trailing newline
@@ -205,15 +230,8 @@ int execute(char **argv, int mode, int *input, int *output)
             dup2(*output, STDOUT_FILENO);
             break;
         }
-
-        if (execvp(argv[0], argv) != 0)
-        {
-            if (errno == ENOENT)
-                fprintf(stderr, C_RED "Command not found: %s\n" C_RESET, argv[0]);
-            else
-                fprintf(stderr, C_RED "exec: %s\n" C_RESET, strerror(errno));
-            _exit(EXIT_FAILURE);
-        }
+        // execute
+        EXEC(argv);
     }
 
     if (*input != STDIN_FILENO)
@@ -235,11 +253,24 @@ int execute(char **argv, int mode, int *input, int *output)
 int execute_builtin(char **argv)
 {
     int retval = EX_SUCCESS;
-    if (strcmp(argv[0], BUILTIN_CMD_EXIT) == 0)
+    if (strcmp(argv[0], BUILTIN_CMD_HELP) == 0)
     {
-        if (argv[1] != NULL)
+        PRINT_HELP_INFO();
+    }
+    else if (strcmp(argv[0], BUILTIN_CMD_EXIT) == 0)
+    {
+        if (argv[1])
             retval = atoi(argv[1]);
         _exit(retval);
+    }
+    else if (strcmp(argv[0], BUILTIN_CMD_EXEC) == 0)
+    {
+        if (lenof(argv) == 1)
+        {
+            fprintf(stderr, C_RED "xsh: exec: argument required!\n" C_RESET);
+            return EX_INVALID;
+        }
+        EXEC(argv + 1);
     }
     else if (strcmp(argv[0], BUILTIN_CMD_CD) == 0)
     {
@@ -292,7 +323,7 @@ int parse_commands(void)
     char *next = strchr(pbuf, '|');
     char *predir = strchr(pbuf, '>');
 
-    if (predir != NULL)
+    if (predir)
     {
         *predir++ = '\0';
 
@@ -320,21 +351,21 @@ int parse_commands(void)
 
         if (fredir == NULL || !strlen(fredir))
         {
-            fprintf(stderr, "invalid fd redirect\n");
+            fprintf(stderr, "xsh: invalid fd redirect\n");
             return 0;
         }
     }
 
     while (1)
     {
-        if (next != NULL)
+        if (next)
             *next = '\0';
 
         // ignore empty
         if (!parse_arguments(pbuf, pargv))
         {
             if ((pcmds - commands) > 0)
-                fprintf(stderr, "invalid command\n");
+                fprintf(stderr, "xsh: invalid command\n");
             return 0;
         }
 

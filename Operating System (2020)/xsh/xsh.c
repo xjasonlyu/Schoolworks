@@ -76,7 +76,7 @@ int init_shell(void)
     }
 
 out:
-    if (fp != NULL)
+    if (fp)
         fclose(fp); /* close opened file */
     return 0;
 }
@@ -108,13 +108,13 @@ int process(void)
     int mode = FIRST_CMD;
 
     // redirect fd exists
-    if (fredir != NULL && strlen(fredir) > 0)
+    if (fredir && strlen(fredir) > 0)
     {
         output = open(fredir, fmode, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
         if (output < 0)
         {
-            fprintf(stderr, "Cannot open file: %s\n", fredir);
+            fprintf(stderr, "cannot open file: %s\n", fredir);
             goto out;
         }
     }

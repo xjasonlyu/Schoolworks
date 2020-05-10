@@ -20,7 +20,9 @@
 #define WRITE_END 0x01
 
 #define BUILTIN_CMD_CD "cd"
+#define BUILTIN_CMD_EXEC "exec"
 #define BUILTIN_CMD_EXIT "exit"
+#define BUILTIN_CMD_HELP "help"
 
 #define C_RED "\033[0;31m"
 #define C_GREEN "\033[0;32m"
