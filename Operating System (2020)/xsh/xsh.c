@@ -166,7 +166,6 @@ int parse(void)
     if (retval <= 0)
         goto out;
 
-    retval = parse_commands(buf, arguments, commands, &fredir, &fmode);
     retval = parse_commands();
 
 out:
