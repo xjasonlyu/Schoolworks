@@ -52,7 +52,7 @@ def false_rate(base, test):
     return count / total
 
 
-def imshow(*images, cols=1, x=8, y=7, show=False, title=None, titles=None):
+def imshow(*images, cols=1, x=8, y=7, show=True, title=None, titles=None):
     assert titles is None or len(images) == len(titles)
 
     n = len(images)
