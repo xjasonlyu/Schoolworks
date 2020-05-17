@@ -6,6 +6,8 @@ from io import BytesIO
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+
+from skimage.util import random_noise
 from skimage.metrics import peak_signal_noise_ratio
 
 
@@ -19,17 +21,20 @@ def psnr(img, test, r=None):
     if(mse == 0):
         return 100.0
     # max_pixel = 255.0
-    # return 20 * math.log10(max_pixel / math.sqrt(mse)) 
+    # return 20 * math.log10(max_pixel / math.sqrt(mse))
     # as alias
     return peak_signal_noise_ratio(img, test, data_range=r)
 
 
-def gaussian_noise(img, n):
-    mean = 0
-    sigma = math.sqrt(n)
-    gauss = np.random.normal(mean, sigma, img.shape)
-    noisy = img.copy() + gauss.reshape(*img.shape)
-    return noisy
+def gaussian_noise(img, m, v):
+    noisy = random_noise(np.uint8(img), mode='gaussian',
+                         seed=None, mean=m, var=v)
+    return np.uint8(noisy*255)
+    # mean = 0
+    # sigma = math.sqrt(n)
+    # gauss = np.random.normal(mean, sigma, img.shape)
+    # noisy = img.copy() + gauss.reshape(*img.shape)
+    # return noisy
 
 
 def jpeg_compress(img, quality=95):

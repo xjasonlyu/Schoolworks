@@ -5,17 +5,17 @@ import numpy as np
 
 BLK_SIZE = 8
 
-BLOCK_SAMPLE = [[0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0],
+BLOCK_SAMPLE = [[0, 0, 0, 0, 1, 1, 0, 0],
+                [0, 0, 0, 1, 1, 0, 0, 0],
+                [0, 0, 1, 1, 0, 0, 0, 0],
+                [0, 1, 1, 0, 0, 0, 0, 0],
+                [1, 1, 0, 0, 0, 0, 0, 0],
                 [0, 0, 0, 0, 0, 0, 0, 0],
                 [0, 0, 0, 0, 0, 0, 0, 0],
                 [0, 0, 0, 0, 0, 0, 0, 0]]
 
 
-def dct_encode(orig, mark, alpha=0.05):
+def dct_encode(orig, mark, alpha=5):
     # check
     assert len(orig.shape) == 2 and len(mark.shape) == 2
     assert orig.shape[0] >= mark.shape[0] and orig.shape[1] >= mark.shape[1]
@@ -64,7 +64,7 @@ def dct_encode(orig, mark, alpha=0.05):
             continue
         break
 
-    return base_f
+    return np.uint8(base_f)
 
 
 def dct_decode(orig, base, shape):
