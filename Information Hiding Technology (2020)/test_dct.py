@@ -17,6 +17,8 @@ def test_dct(orig, mark, alpha, label=''):
     orig_enc = dct_encode(orig, mark, alpha=alpha)
     mark_dec = dct_decode(orig, orig_enc, mark.shape)
 
+    #mark_dec[1:6,1:6] = 0
+
     # imshow(orig, orig_enc, mark, mark_dec, cols=2,
     #        title=f'Embedding with {cap*100:.2f}% capacity',
     #        titles=[
@@ -24,8 +26,136 @@ def test_dct(orig, mark, alpha, label=''):
     #            'Original Watermark', 'Extracted Watermark'
     #        ])
 
-    print(f'original={label}({orig.shape[0]}x{orig.shape[1]})\talpha={alpha}\twatermark={mark.shape[0]}x{mark.shape[1]}\tcapacity={cap*100:.2f}%\tPSNR={psnr(orig, orig_enc):.4f}')
+    #print(f'original={label}({orig.shape[0]}x{orig.shape[1]})\talpha={alpha} \twatermark={mark.shape[0]}x{mark.shape[1]} \tcapacity={cap*100:.2f}%\tPSNR={psnr(orig, orig_enc):e}')
 
+    print(
+        f'original={label}({orig.shape[0]}x{orig.shape[1]})\talpha={alpha} \twatermark={mark.shape[0]}x{mark.shape[1]} \tcapacity={cap*100:.2f}%\tfalse_rate={false_rate(mark, mark_dec)*100:e}%')
+
+
+def test_robustness(orig, mark, f, args, alpha=5):
+    cap = (mark.shape[0] * mark.shape[1]) / (orig.shape[0] * orig.shape[1])
+
+    orig_enc = dct_encode(orig, mark, alpha=alpha)
+
+    for arg in args:
+        orig_enc_robust = f(orig_enc, *arg)
+        mark_dec_robust = dct_decode(orig, orig_enc_robust, mark.shape)
+
+        imshow(orig, orig_enc_robust, mark, mark_dec_robust, cols=2,
+               title=f'Robustness test with {f.__name__} {arg}',
+               titles=[
+                   'Original Image', 'Attacked Image',
+                   'Original Watermark', 'Extracted Attacked Watermark'
+               ])
+
+
+def draw_gaussian_robust_graph(orig, mark, args):
+    cap = (mark.shape[0] * mark.shape[1]) / (orig.shape[0] * orig.shape[1])
+
+    # alpha = 5
+    orig_enc = dct_encode(orig, mark, alpha=5)
+
+    false_rate_l_5 = np.zeros(len(args))
+    for i, arg in enumerate(args):
+        print(f'\ralpha={5} {arg:.5f}', end='')
+        orig_enc_robust = gaussian_noise(orig_enc, m=0, v=arg)
+        mark_dec_robust = dct_decode(orig, orig_enc_robust, mark.shape)
+        false_rate_l_5[i] = np.float(false_rate(mark, mark_dec_robust)*100)
+
+    # alpha = 10
+    orig_enc = dct_encode(orig, mark, alpha=10)
+
+    false_rate_l_10 = np.zeros(len(args))
+    for i, arg in enumerate(args):
+        print(f'\ralpha={10} {arg:.5f}', end='')
+        orig_enc_robust = gaussian_noise(orig_enc, m=0, v=arg)
+        mark_dec_robust = dct_decode(orig, orig_enc_robust, mark.shape)
+        false_rate_l_10[i] = np.float(false_rate(mark, mark_dec_robust)*100)
+
+    # alpha = 20
+    orig_enc = dct_encode(orig, mark, alpha=20)
+
+    false_rate_l_20 = np.zeros(len(args))
+    for i, arg in enumerate(args):
+        print(f'\ralpha={20} {arg:.5f}', end='')
+        orig_enc_robust = gaussian_noise(orig_enc, m=0, v=arg)
+        mark_dec_robust = dct_decode(orig, orig_enc_robust, mark.shape)
+        false_rate_l_20[i] = np.float(false_rate(mark, mark_dec_robust)*100)
+
+    #print(list(zip(args, false_rate_l)))
+
+    #assert len(false_rate_l) == len(args)
+
+    fig = plt.figure()
+    plt.plot(args, false_rate_l_5, label='Alpha=5')
+    plt.plot(args, false_rate_l_10, label='Alpha=10')
+    plt.plot(args, false_rate_l_20, label='Alpha=20')
+
+    #fig.suptitle('Robustness Test: Gaussian Noise')
+
+    plt.title('False Rate with Different Alpha')
+    plt.xlabel('Gaussian Noise')
+    plt.ylabel('False Rate (%)')
+
+    plt.legend(loc="lower right")
+
+    plt.show()
+
+
+def draw_jpeg_robust_graph(orig, mark, args):
+    cap = (mark.shape[0] * mark.shape[1]) / (orig.shape[0] * orig.shape[1])
+
+    # alpha = 5
+    orig_enc = dct_encode(orig, mark, alpha=5)
+
+    false_rate_l_5 = np.zeros(len(args))
+    for i, arg in enumerate(args):
+        print(f'\ralpha={5} {arg}', end='')
+        orig_enc_robust = jpeg_compress(orig_enc, quality=arg)
+        mark_dec_robust = dct_decode(orig, orig_enc_robust, mark.shape)
+        false_rate_l_5[i] = np.float(false_rate(mark, mark_dec_robust)*100)
+    print()
+
+    # alpha = 10
+    orig_enc = dct_encode(orig, mark, alpha=10)
+
+    false_rate_l_10 = np.zeros(len(args))
+    for i, arg in enumerate(args):
+        print(f'\ralpha={10} {arg}', end='')
+        orig_enc_robust = jpeg_compress(orig_enc, quality=arg)
+        mark_dec_robust = dct_decode(orig, orig_enc_robust, mark.shape)
+        false_rate_l_10[i] = np.float(false_rate(mark, mark_dec_robust)*100)
+    print()
+
+    # alpha = 20
+    orig_enc = dct_encode(orig, mark, alpha=20)
+
+    false_rate_l_20 = np.zeros(len(args))
+    for i, arg in enumerate(args):
+        print(f'\ralpha={20} {arg}', end='')
+        orig_enc_robust = jpeg_compress(orig_enc, quality=arg)
+        mark_dec_robust = dct_decode(orig, orig_enc_robust, mark.shape)
+        false_rate_l_20[i] = np.float(false_rate(mark, mark_dec_robust)*100)
+    print()
+
+    #print(list(zip(args, false_rate_l)))
+
+    #assert len(false_rate_l) == len(args)
+
+    fig = plt.figure()
+    plt.plot(args, false_rate_l_5, label='Alpha=5')
+    plt.plot(args, false_rate_l_10, label='Alpha=10')
+    plt.plot(args, false_rate_l_20, label='Alpha=20')
+
+    #fig.suptitle('Robustness Test: Gaussian Noise')
+
+    plt.title('False Rate with Different Alpha')
+    plt.xlabel('JPEG Compress Quality')
+    plt.ylabel('False Rate (%)')
+
+    plt.legend(loc="upper right")
+
+    plt.show()
 
 
 def test():
@@ -51,10 +181,9 @@ def test():
     kabuto_400_b = to_binary_image(kabuto_400)
     kuuga_512_b = to_binary_image(kuuga_512)
 
-
     # test_logo = zero_one_128_b
     # original_enc = dct_encode(original_image, test_logo)
-    
+
     # # faiz_64_b_dec = dct_decode(original_image, original_enc, faiz_64_b.shape)
     # # noisy = gaussian_noise(original_enc, 0.002)
     # #noisy = gaussian_noise(original_enc, 0, 0.0002)
@@ -71,12 +200,23 @@ def test():
     #     'Original Watermark', 'Extracted Watermark'
     # ])
 
-    for orig_n in ['lena.bmp', 'boats.bmp']:
+    for orig_n in ['boats.bmp', 'peppers.bmp']:
+        orig = cv2.imread('images/original/'+orig_n,
+                                  cv2.IMREAD_GRAYSCALE)
         for mark in [faiz_64_b, blade_100_b, zero_one_128_b]:
-            for a in range(1, 6):
-                orig = cv2.imread('images/original/'+orig_n, cv2.IMREAD_GRAYSCALE)
+            for a in [1, 3, 5, 10, 20]:
                 test_dct(orig, mark, alpha=a, label=orig_n)
             print()
+
+    # test_robustness(original_image, zero_one_128_b, gaussian_noise, [(0,0.01)], alpha=20)
+
+    # test_robustness(original_image, zero_one_128_b, jpeg_compress, [[95], [75], [40], [20]], alpha=5)
+    # test_robustness(original_image, zero_one_128_b, jpeg_compress, [[40], [20]], alpha=20)
+    # test_robustness(original_image, zero_one_128_b, jpeg_compress, [[5]], alpha=150)
+
+    #draw_gaussian_robust_graph(original_image, zero_one_128_b, [(i)*0.00001 for i in range(10)]+[(i)*0.0001 for i in range(10) if i] + [(i)*0.001 for i in range(5) if i])
+
+    #draw_jpeg_robust_graph(original_image, zero_one_128_b, list(range(5,101,5)))
 
     # original_enc = dct_encode(original_image, blade_100_b)
     # blade_100_b_dec = dct_decode(original_image, original_enc, blade_100_b.shape)

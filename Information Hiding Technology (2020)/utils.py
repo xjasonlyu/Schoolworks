@@ -27,7 +27,7 @@ def psnr(img, test, r=None):
     return peak_signal_noise_ratio(img, test, data_range=r)
 
 
-def gaussian_noise(img, m, v):
+def gaussian_noise(img, m=0, v=0.0001):
     noisy = random_noise(np.uint8(img), mode='gaussian',
                          seed=None, mean=m, var=v)
     return np.uint8(noisy*255)
