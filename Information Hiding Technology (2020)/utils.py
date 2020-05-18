@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import math
 from io import BytesIO
 
@@ -38,9 +39,11 @@ def gaussian_noise(img, m, v):
 
 
 def jpeg_compress(img, quality=95):
-    cv2.imwrite('.tmp/__tmp_compressed.jpg', img, [
+    _tmp_img = '.tmp/__tmp_compressed.jpg'
+    cv2.imwrite(_tmp_img, img, [
                 int(cv2.IMWRITE_JPEG_QUALITY), quality])
-    return cv2.imread('.tmp/__tmp_compressed.jpg', cv2.IMREAD_GRAYSCALE)
+    assert os.path.exists(_tmp_img)
+    return cv2.imread(_tmp_img, cv2.IMREAD_GRAYSCALE)
 
 
 def false_rate(base, test):

@@ -39,12 +39,12 @@ def dct_encode(orig, mark, alpha=5):
             block_dct = cv2.dct(block)
 
             try:
-                for x in range(4):
+                for x in range(5):
                     bit = int(next(g))
                     assert bit in (0, 1)
 
                     offset = 1 if bit else -1
-                    block_dct[x*2:x*2+2, 6-x*2:8-x*2] += alpha*offset
+                    block_dct[x, 4-x:5-x] += alpha*offset
                     # block_dct[0:2, 6:8] += alpha*offset
                     # block_dct[2:4, 4:6] += alpha*offset
                     # block_dct[4:6, 2:4] += alpha*offset
@@ -94,12 +94,12 @@ def dct_decode(orig, base, shape):
             orig_block_dct = cv2.dct(orig_block)
             base_block_dct = cv2.dct(base_block)
 
-            for x in range(4):
+            for x in range(5):
                 if count > total:
                     flag = True
                     break
-                bits.append(1 if np.mean(base_block_dct[x*2:x*2+2, 6-x*2:8-x*2]) > np.mean(
-                    orig_block_dct[x*2:x*2+2, 6-x*2:8-x*2]) else 0)
+                bits.append(1 if np.mean(base_block_dct[x, 4-x:5-x]) > np.mean(
+                    orig_block_dct[x, 4-x:5-x]) else 0)
                 count += 1
 
             if flag:
