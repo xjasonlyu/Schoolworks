@@ -90,7 +90,6 @@ int BSTDelete(BTNode *&root, DataType item)
         return BSTDelete(root->left, item);
     else
         return BSTDelete(root->right, item);
-    return 1;
 }
 
 //中序遍历二叉树
