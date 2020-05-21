@@ -92,7 +92,7 @@ def draw_robust_graph(orig, mark, f, args, title=''):
 def test():
     # open base image in grayscale
     original_image = cv2.imread(
-        'images/original/boats.bmp', cv2.IMREAD_GRAYSCALE)
+        'images/original/lena.bmp', cv2.IMREAD_GRAYSCALE)
 
     assert original_image.shape == (X_SIZE, Y_SIZE)
 
@@ -108,9 +108,11 @@ def test():
 
     # imshow(decade_256, decade_256_b)
 
-    # original_enc = lsb_encode(original_image, decade_256_b)
+    # original_enc = lsb_encode(original_image, decade_256_b, b'\x55\x20')
 
-    # decade_256_dec = lsb_decode(original_enc, decade_256_b.shape)
+    # decade_256_dec = lsb_decode(original_enc, decade_256_b.shape, b'\x05\x20')
+
+    # imshow(original_image, original_enc, decade_256_b, decade_256_dec, cols=2)
 
     # orig_noisy = gaussian_noise(original_enc, 0.1)
 
@@ -120,7 +122,13 @@ def test():
 
     # decade_256_compressed_dec = lsb_decode(orig_compressed, decade_256_b.shape)
 
-    # imshow(original_image, original_enc, orig_noisy, decade_256_b, decade_256_dec, decade_256_noisy_dec, cols=3)
+
+    from lsb import ixor
+    i = ixor(decade_256_b, b'xx', 1)
+    j = ixor(i, b'x0', 0)
+
+    imshow(decade_256_b, i, j)
+
     # imshow(original_enc, orig_noisy, orig_compressed, decade_256_dec, decade_256_noisy_dec, decade_256_compressed_dec, cols=2)
 
     #print(psnr(original_image, original_enc))

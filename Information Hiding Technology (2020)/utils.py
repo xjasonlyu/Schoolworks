@@ -60,7 +60,7 @@ def false_rate(base, test):
     return count / total
 
 
-def imshow(*images, cols=1, x=8, y=7, show=True, title=None, titles=None):
+def imshow(*images, cols=1, x=8, y=7, show=True, title=None, titles=None, mode=None):
     assert titles is None or len(images) == len(titles)
 
     n = len(images)
@@ -72,7 +72,14 @@ def imshow(*images, cols=1, x=8, y=7, show=True, title=None, titles=None):
         a = fig.add_subplot(cols, np.ceil(n/float(cols)), i + 1)
         if image.ndim == 2:
             plt.gray()
-        plt.imshow(image)
+
+        if not mode:
+            plt.imshow(image)
+        else:
+            if i==1:
+                plt.ylim([0.999,1.001])
+            plt.plot(image)
+
         if titles is not None:
             a.set_title(titles[i])
     # fig.set_size_inches(np.array(fig.get_size_inches()) * n_images)
