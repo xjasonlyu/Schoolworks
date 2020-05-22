@@ -55,8 +55,8 @@ def analyze(img: np.ndarray):
             # print(r)
 
             pr[k] = r
-            pc[k] = 1-chi2.pdf(r, 127)
-            #pc[k] = 1-chi2.cdf(r, 255)
+            #pc[k] = 1-chi2.pdf(r, 127)
+            pc[k] = 1-chi2.cdf(r, 255)
 
             r = 0
             k += 1
@@ -90,7 +90,7 @@ def test_results(orig, mark, k, f, s=0.9990, label=''):
 def test():
     # open base image in grayscale
     original_image = cv2.imread(
-        'images/original/lena.bmp', cv2.IMREAD_GRAYSCALE)
+        'images/original/boats.bmp', cv2.IMREAD_GRAYSCALE)
 
     assert original_image.shape == (X_SIZE, Y_SIZE)
 
@@ -104,33 +104,33 @@ def test():
     kabuto_400_b = to_binary_image(kabuto_400)
     kuuga_512_b = to_binary_image(kuuga_512)
 
-    # test_b = kuuga_512_b
+    test_b = kuuga_512_b
 
-    # original_enc = lsb_encode(original_image, test_b, os.urandom(2), None)
+    original_enc = lsb_encode(original_image, test_b, os.urandom(32), iaes)
 
-    # # test_b_dec = lsb_decode(original_enc, test_b.shape, b'\x55\x34'*16, iaes)
+    test_b_dec = lsb_decode(original_enc, test_b.shape, b'\x55\x34'*16, None)
 
-    # # imshow(get_lsb(original_image), get_lsb(original_enc), cols=1, titles=[
-    # #     'LSB of Original Image', 'LSB of Watermarked Image (AES)'
-    # # ])
+    # imshow(get_lsb(original_image), get_lsb(original_enc), cols=1, titles=[
+    #     'LSB of Original Image', 'LSB of Watermarked Image'
+    # ])
 
-    # pr, pc = analyze(original_image)
+    pr, pc = analyze(original_enc)
 
     # print(sum(pc)/len(pc))
 
-    p = n = 0
-    imgs = os.listdir('images/original')
-    for orig_n in imgs:
-        orig = cv2.imread('images/original/'+orig_n, cv2.IMREAD_GRAYSCALE)
-        i, j = test_results(orig, decade_256_b, os.urandom(32), iaes, label=orig_n, s=0.9980)
-        p += i
-        n += j
+    # p = n = 0
+    # imgs = os.listdir('images/original')
+    # for orig_n in imgs:
+    #     orig = cv2.imread('images/original/'+orig_n, cv2.IMREAD_GRAYSCALE)
+    #     i, j = test_results(orig, decade_256_b, os.urandom(32), iaes, label=orig_n, s=0.9980)
+    #     p += i
+    #     n += j
 
-    print(f'\np={p}, n={n}\nFP={p/(len(imgs)*2)} \t FN={n/(len(imgs)*2)}')
+    # print(f'\np={p}, n={n}\nFP={p/(len(imgs)*2)} \t FN={n/(len(imgs)*2)}')
 
-    # imshow(pr, pc, mode=1, cols=2, titles=[
-    #     'r = sum(h2i-h2i*)^2/h2i', 'p = 1-chi2.pdf(r, 127)'
-    # ])
+    imshow(pr, pc, mode=1, cols=2, titles=[
+        'r = sum(h2i-h2i*)^2/h2i', 'p = 1-chi2.cdf(r, 255)'
+    ])
 
     # from crypto import ixor, iaes
 

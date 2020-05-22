@@ -200,13 +200,13 @@ def test():
     #     'Original Watermark', 'Extracted Watermark'
     # ])
 
-    for orig_n in ['boats.bmp', 'peppers.bmp']:
-        orig = cv2.imread('images/original/'+orig_n,
-                                  cv2.IMREAD_GRAYSCALE)
-        for mark in [faiz_64_b, blade_100_b, zero_one_128_b]:
-            for a in [1, 3, 5, 10, 20]:
-                test_dct(orig, mark, alpha=a, label=orig_n)
-            print()
+    # for orig_n in ['boats.bmp', 'peppers.bmp']:
+    #     orig = cv2.imread('images/original/'+orig_n,
+    #                               cv2.IMREAD_GRAYSCALE)
+    #     for mark in [faiz_64_b, blade_100_b, zero_one_128_b]:
+    #         for a in [1, 3, 5, 10, 20]:
+    #             test_dct(orig, mark, alpha=a, label=orig_n)
+    #         print()
 
     # test_robustness(original_image, zero_one_128_b, gaussian_noise, [(0,0.01)], alpha=20)
 

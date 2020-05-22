@@ -76,8 +76,8 @@ def imshow(*images, cols=1, x=8, y=7, show=True, title=None, titles=None, mode=N
         if not mode:
             plt.imshow(image)
         else:
-            if i==1:
-                plt.ylim([0.999,1.001])
+            # if i==1:
+            #     plt.ylim([0.999,1.001])
             plt.plot(image)
 
         if titles is not None:
