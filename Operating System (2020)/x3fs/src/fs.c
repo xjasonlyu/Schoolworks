@@ -87,8 +87,9 @@ int fs_writeto(const char *filename)
     return 0;
 }
 
-int fs_exit(const char *filename)
+int fs_exit()
 {
-    fs_writeto(filename);
+    // save data to file before exit
+    fs_writeto(NULL);
     exit(0);
 }

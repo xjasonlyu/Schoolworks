@@ -21,13 +21,13 @@ int main(int argc, char const *argv[])
     int total_size = atoi(argv[2]);
     if (total_size < 0 || total_size > MAXSIZE)
     {
-        puts("disk size too small or too large");
+        puts("disk file size too small or too large");
         retval = -1;
         goto out;
     }
     if (total_size % BLOCK_SIZE)
     {
-        puts("disk size must be aligned with 4KB");
+        puts("disk file size must be aligned with 4KB");
         retval = -1;
         goto out;
     }
