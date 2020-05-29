@@ -1,16 +1,7 @@
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "fs.h"
-
-#define len_of(p) __len_of__((void **)(p))
-
-size_t __len_of__(void **p)
-{
-    size_t n = 0;
-    while (*p++)
-        n++;
-    return n;
-}
 
 bid_t find_free_block()
 {
@@ -34,4 +25,33 @@ int find_available_fd()
         }
     }
     return -1;
+}
+
+char *get_dirname(dir_t *dir)
+{
+    static char name[FNAME_LENGTH] = {0};
+
+    if (dir->parent_bid == dir->bid)
+    {
+        // root dir
+        strncpy(name, "/", FNAME_LENGTH);
+    }
+    else
+    {
+        dir_t *parent_dir = (dir_t *)malloc(sizeof(blk_t));
+        pread(fd, parent_dir, sizeof(blk_t), offset_of(cur_dir->parent_bid));
+        for (int i = 0; i < parent_dir->item_num; ++i)
+        {
+            if (parent_dir->fcb[i].bid == dir->bid)
+            {
+                strncpy(name, parent_dir->fcb[i].fname, FNAME_LENGTH);
+                break;
+            }
+        }
+
+        if (parent_dir)
+            free(parent_dir);
+    }
+
+    return name;
 }

@@ -205,6 +205,11 @@ int fs_cd(const char *path)
         found = true;
         pread(fd, cur_dir, sizeof(blk_t), offset_of(cur_dir->parent_bid));
     }
+    else if (!strncmp(path, "/", FNAME_LENGTH)) /* root dir */
+    {
+        found = true;
+        pread(fd, cur_dir, sizeof(blk_t), offset_of(sb->data_start_bid - 1));
+    }
     else /* sub dir */
     {
         for (int i = 0; i < cur_dir->item_num; ++i)

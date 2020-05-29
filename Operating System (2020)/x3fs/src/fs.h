@@ -99,10 +99,11 @@ int fs_close(int);
 int fs_write(int, const char *, size_t);
 int fs_read(int, const char *, size_t);
 int fs_rm(const char *path);
-int fs_exit(const char *path);
+int fs_exit();
 
 // helper
 bid_t find_free_block();
 int find_available_fd();
+char *get_dirname(dir_t *);
 
 #endif
