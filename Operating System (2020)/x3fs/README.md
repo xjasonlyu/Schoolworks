@@ -8,3 +8,4 @@ Thanks a lot to oyiadin's [g3fs](https://github.com/oyiadin/Schoolworks/tree/mas
 - better CLI
 - fcb timestamp
 - file seek
+- file rename
