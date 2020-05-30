@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <sys/types.h>
+#include <time.h>
 
 extern int fd;
 
@@ -48,6 +49,8 @@ typedef struct fcb
     uint32_t size;            // 4
     bid_t bid;                // 2
     uint8_t attrs;            // 1
+    time_t created_time;      // 4
+    time_t modified_time;     // 4
 } fcb_t;
 #define check_filename_length(x) (strlen(x) <= FNAME_LENGTH)
 #define DIR_MASK 0b10u
@@ -97,6 +100,10 @@ int fs_cd(const char *path);
 int fs_create(const char *path);
 int fs_open(const char *path);
 int fs_close(int);
+#define FS_SEEK_SET 0
+#define FS_SEEK_CUR 1
+#define FS_SEEK_END 2
+int fs_seek(int, int, int);
 int fs_write(int, const char *, size_t);
 int fs_read(int, const char *, size_t);
 int fs_rm(const char *path);

@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <time.h>
 
 #include "fs.h"
 
@@ -49,6 +50,8 @@ int fs_mkdir(const char *path)
     fcb->size = 0;
     fcb->attrs = EXIST_MASK | DIR_MASK;
     fcb->bid = bid;
+    fcb->created_time = time(NULL);
+    fcb->modified_time = fcb->created_time;
     cur_dir->item_num++;
     // update current dir block to image file
     pwrite(fd, cur_dir, sizeof(blk_t), offset_of(cur_dir->bid));
@@ -183,11 +186,13 @@ int fs_ls()
     {
         if (fcb_exist(&cur_dir->fcb[i]))
         {
-            printf("%9s [%s\tbid=%d\tsize=%d]\n",
+            printf("%9s [%s\tbid=%d\tsize=%d\tcreated=%ld\tmodified=%ld]\n",
                    cur_dir->fcb[i].fname,
                    (fcb_isdir(&cur_dir->fcb[i]) ? "dir" : "file"),
                    cur_dir->fcb[i].bid,
-                   cur_dir->fcb[i].size);
+                   cur_dir->fcb[i].size,
+                   cur_dir->fcb[i].created_time,
+                   cur_dir->fcb[i].modified_time);
         }
         else
         {
@@ -304,6 +309,8 @@ int fs_create(const char *path)
     fcb->size = 0;
     fcb->bid = 0;
     fcb->attrs = EXIST_MASK;
+    fcb->created_time = time(NULL);
+    fcb->modified_time = fcb->created_time;
 
     cur_dir->item_num++;
 
@@ -365,7 +372,8 @@ int fs_open(const char *path)
                 ofs[available_fd].fcb_id = i;
                 ofs[available_fd].off = 0;
                 ofs[available_fd].is_fcb_modified = false;
-                // printf("open: fd: %d\n", available_fd);
+                // set new modified timestamp
+                cur_dir->fcb[i].modified_time = time(NULL);
                 retval = available_fd;
                 break;
             }
@@ -380,6 +388,53 @@ int fs_open(const char *path)
     {
         report_error("open: file not found");
     }
+
+out:
+    return retval;
+}
+
+/*
+    seek fd offset type
+*/
+int fs_seek(int target_fd, int offset, int type)
+{
+    int retval = -1;
+
+    // fd validation check
+    if (!check_opened_fd(target_fd))
+    {
+        report_error("seek: illegal fd");
+    }
+
+    // fd empty
+    if (!ofs[target_fd].not_empty)
+    {
+        report_error("seek: illegal fd");
+    }
+
+    switch (type)
+    {
+    case FS_SEEK_SET:
+        ofs[target_fd].off = offset;
+        break;
+    case FS_SEEK_CUR:
+        if (ofs[target_fd].off + offset > ofs[target_fd].fcb.size)
+        {
+            ofs[target_fd].off = ofs[target_fd].fcb.size;
+        }
+        else
+        {
+            ofs[target_fd].off += offset;
+        }
+        break;
+    case FS_SEEK_END:
+        ofs[target_fd].off = ofs[target_fd].fcb.size;
+        break;
+    default:
+        break;
+    }
+
+    retval = 0;
 
 out:
     return retval;

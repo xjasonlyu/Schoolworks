@@ -61,7 +61,8 @@ void sh_init()
 
 void sh_promot()
 {
-    printf("(%s)> ", mounted ? get_abspath(cur_dir) : "NULL");
+    // printf("(%s)> ", mounted ? get_abspath(cur_dir) : "NULL");
+    printf("%s➜ " C_RESET, mounted ? C_GREEN : C_RED);
 }
 
 void sh_help()
@@ -69,9 +70,16 @@ void sh_help()
     puts("Commands:");
     for (int i = 0; i < CMD_MAP_LEN - 1; ++i)
     {
-        printf("%9s\t%s\n", cmd_map[i].cmd, cmd_map[i].desc);
+        printf("%s)%9s\t%s\n", (cmd_map[i].protected ? C_RED "*" C_RESET : C_GREEN "+" C_RESET),
+               cmd_map[i].cmd, cmd_map[i].desc);
     }
     return;
+}
+
+void sh_clear()
+{
+    const char magic_ansi[] = "\e[1;1H\e[2J";
+    write(STDOUT_FILENO, magic_ansi, sizeof(magic_ansi));
 }
 
 void sh_pwd()
@@ -133,6 +141,31 @@ void sh_cat(const char *filename)
     }
 
     free(b);
+    fs_close(_fd);
+}
+
+void sh_append(const char *filename)
+{
+    int _fd = fs_open(filename);
+    if (_fd < 0)
+    {
+        fprintf(stderr, "append: cannot open %s\n", filename);
+        return;
+    }
+
+    // seek to end
+    fs_seek(_fd, 0, FS_SEEK_END);
+
+    int n = 0;
+    char input[0x100] = {0};
+    while (1)
+    {
+        n = read(STDIN_FILENO, buf, 0xFF);
+        if (n <= 0)
+            break;
+        fs_write(_fd, buf, n);
+    }
+
     fs_close(_fd);
 }
 
