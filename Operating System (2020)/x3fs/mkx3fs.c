@@ -53,7 +53,8 @@ int main(int argc, char *argv[])
     }
 
     blk_t *blk = (blk_t *)malloc(sizeof(blk_t));
-    int fd = open(argv[1], O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
+    int fd = open(argv[1], O_WRONLY | O_CREAT,
+                  S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
 
     // super block
     memset(blk, 0, sizeof(blk_t));

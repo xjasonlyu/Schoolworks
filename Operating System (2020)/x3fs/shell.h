@@ -51,6 +51,7 @@ void sh_cat(const char *);
 void sh_mount(const char *);
 
 void sh_cpi(const char *, const char *);
+void sh_cpo(const char *, const char *);
 
 void sh_init();
 void sh_exit();
@@ -80,7 +81,8 @@ struct cmd_t cmd_map[] = {
     {"pwd", "return working directory name", (void (*)())sh_pwd, true, TYPE_ARG0},
     {"touch", "create file", (void (*)())fs_create, true, TYPE_ARG1},
     {"cat", "concatenate and print files", (void (*)())sh_cat, true, TYPE_ARG1},
-    {"cpi", "copy from local to fs", (void (*)())sh_cpi, true, TYPE_ARG2},
+    {"cpi", "copy from local to x3fs", (void (*)())sh_cpi, true, TYPE_ARG2},
+    {"cpo", "copy from x3fs to local", (void (*)())sh_cpo, true, TYPE_ARG2},
     // {"create", "", (void (*)())fs_create, 1},
     {"open", "open file", (void (*)())fs_open, true, TYPE_ARG1},
     {"close", "close file via fd", (void (*)())fs_close, true, 10},

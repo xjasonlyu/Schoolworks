@@ -3,8 +3,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #include "fs.h"
 #include "shell.h"
@@ -148,13 +148,15 @@ void sh_cpi(const char *src, const char *dst)
     if (fs_create(dst) < 0)
     {
         fprintf(stderr, "cpi: cannot create %s\n", dst);
+        close(src_fd);
         return;
     }
 
-    int _fd = fs_open(dst);
-    if (_fd < 0)
+    int dst_fd = fs_open(dst);
+    if (dst_fd < 0)
     {
         fprintf(stderr, "cpi: cannot open %s\n", dst);
+        close(src_fd);
         return;
     }
 
@@ -163,16 +165,49 @@ void sh_cpi(const char *src, const char *dst)
     do
     {
         n = read(src_fd, b, BLOCK_SIZE);
-        // write(STDOUT_FILENO, b, n);
-        fs_write(_fd, b, n);
+        fs_write(dst_fd, b, n);
     } while (n > 0);
 
     free(b);
     close(src_fd);
+    fs_close(dst_fd);
+}
 
-cpi_out:
-    if (fs_close(_fd) < 0)
-        fprintf(stderr, "cpi: fd: %d close failed\n", _fd);
+void sh_cpo(const char *src, const char *dst)
+{
+    if (access(dst, F_OK) != -1)
+    {
+        fprintf(stderr, "cpo: %s: file exists\n", dst);
+        return;
+    }
+
+    int src_fd = fs_open(src);
+    if (src_fd < 0)
+    {
+        fprintf(stderr, "cpo: cannot open %s\n", src);
+        return;
+    }
+
+    int dst_fd = open(dst, O_WRONLY | O_CREAT,
+                      S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
+    if (dst_fd < 0)
+    {
+        fprintf(stderr, "cpo: cannot create %s\n", dst);
+        fs_close(src_fd);
+        return;
+    }
+
+    void *b = malloc(BLOCK_SIZE);
+    int n = 0;
+    do
+    {
+        n = fs_read(src_fd, b, BLOCK_SIZE);
+        write(dst_fd, b, n);
+    } while (n > 0);
+
+    free(b);
+    close(dst_fd);
+    fs_close(src_fd);
 }
 
 void sh_exit()
