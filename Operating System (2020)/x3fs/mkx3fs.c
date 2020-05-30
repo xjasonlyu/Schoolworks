@@ -8,7 +8,7 @@
 
 #define MAXSIZE (256 * 1024 * 1024)
 
-int main(int argc, char const *argv[])
+int main(int argc, char *argv[])
 {
     int retval = -1;
 
@@ -18,17 +18,37 @@ int main(int argc, char const *argv[])
         goto out;
     }
 
-    int total_size = atoi(argv[2]);
+    int total_size = -1;
+    char *ssize = argv[2];
+    if (strlen(ssize) < 2)
+    {
+        puts("invalid size");
+        goto out;
+    }
+    switch (ssize[strlen(ssize) - 1])
+    {
+    case 'm':
+        ssize[strlen(ssize) - 1] = '\0';
+        total_size = atoi(ssize) * 1024 * 1024;
+        break;
+    case 'k':
+        ssize[strlen(ssize) - 1] = '\0';
+        total_size = atoi(ssize) * 1024;
+        break;
+    case 'B':
+    default:
+        total_size = atoi(ssize);
+        break;
+    }
+
     if (total_size < 0 || total_size > MAXSIZE)
     {
         puts("disk file size too small or too large");
-        retval = -1;
         goto out;
     }
     if (total_size % BLOCK_SIZE)
     {
         puts("disk file size must be aligned with 4KB");
-        retval = -1;
         goto out;
     }
 
@@ -102,11 +122,11 @@ int main(int argc, char const *argv[])
 
     close(fd);
 
-    return 0;
-
-out:
     free(sb);
     free(blk);
 
+    retval = 0;
+
+out:
     return retval;
 }
