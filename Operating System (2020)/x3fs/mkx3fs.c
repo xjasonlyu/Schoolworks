@@ -28,10 +28,12 @@ int main(int argc, char *argv[])
     switch (ssize[strlen(ssize) - 1])
     {
     case 'm':
+    case 'M':
         ssize[strlen(ssize) - 1] = '\0';
         total_size = atoi(ssize) * 1024 * 1024;
         break;
     case 'k':
+    case 'K':
         ssize[strlen(ssize) - 1] = '\0';
         total_size = atoi(ssize) * 1024;
         break;
@@ -62,6 +64,7 @@ int main(int argc, char *argv[])
     sb->magic = MAGIC_SUPERBLOCK;
     sb->total_size = total_size;
     sb->total_block_num = total_size / BLOCK_SIZE;
+    sb->free_block_num = sb->total_block_num;
     sb->fat_block_num = ((sb->total_block_num - 1) / (BLOCK_SIZE / 2)) + 1;
     sb->fcb_num_per_block = (BLOCK_SIZE - sizeof(dir_t)) / sizeof(fcb_t);
     sb->data_start_bid = 2 * sb->fat_block_num + 2;

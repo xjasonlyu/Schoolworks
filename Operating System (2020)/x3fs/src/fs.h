@@ -35,6 +35,7 @@ typedef struct superblock
 #define MAGIC_SUPERBLOCK 0x1510u
     int total_size;
     int total_block_num;
+    int free_block_num;
     int fat_block_num;
     int fcb_num_per_block;
     int data_start_bid;
@@ -96,22 +97,31 @@ int fs_writeto(const char *filename);
 int fs_mkdir(const char *path);
 int fs_rmdir(const char *path);
 int fs_ls();
+int fs_stat();
 int fs_cd(const char *path);
 int fs_create(const char *path);
 int fs_open(const char *path);
 int fs_close(int);
-#define FS_SEEK_SET 0
-#define FS_SEEK_CUR 1
-#define FS_SEEK_END 2
+#ifndef SEEK_SET
+#define	SEEK_SET	0	/* set file offset to offset */
+#endif
+#ifndef SEEK_CUR
+#define	SEEK_CUR	1	/* set file offset to current plus offset */
+#endif
+#ifndef SEEK_END
+#define	SEEK_END	2	/* set file offset to EOF plus offset */
+#endif
 int fs_seek(int, int, int);
 int fs_write(int, const char *, size_t);
 int fs_read(int, const char *, size_t);
 int fs_rm(const char *path);
+int fs_rename(const char *old, const char *new);
 int fs_exit();
 
 // helper
 bid_t find_free_block();
 int find_available_fd();
+char *format_size(uint32_t);
 char *get_dirname(dir_t *);
 char *get_abspath(dir_t *);
 

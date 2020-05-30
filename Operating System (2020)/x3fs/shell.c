@@ -154,7 +154,7 @@ void sh_append(const char *filename)
     }
 
     // seek to end
-    fs_seek(_fd, 0, FS_SEEK_END);
+    fs_seek(_fd, 0, SEEK_END);
 
     int n = 0;
     char input[0x100] = {0};

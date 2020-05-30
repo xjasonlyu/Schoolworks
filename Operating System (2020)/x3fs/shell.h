@@ -87,6 +87,7 @@ struct cmd_t cmd_map[] = {
     {"clear", "clear the terminal screen", (void (*)())sh_clear, false, TYPE_ARG0},
     {"mkdir", "make directory", (void (*)())fs_mkdir, true, TYPE_ARG1},
     {"rmdir", "remove directory", (void (*)())fs_rmdir, true, TYPE_ARG1},
+    {"stat", "show stat of disk", (void (*)())fs_stat, true, TYPE_ARG0},
     {"ls", "list directory contents", (void (*)())fs_ls, true, TYPE_ARG0},
     {"cd", "change directory", (void (*)())fs_cd, true, TYPE_ARG1},
     {"pwd", "return working directory name", (void (*)())sh_pwd, true, TYPE_ARG0},
@@ -101,6 +102,8 @@ struct cmd_t cmd_map[] = {
     // {"write", "write file via fd", (void (*)())fs_write, true, 10},
     // {"read", "read file via fd", (void (*)())fs_read, true, 10},
     {"rm", "remove file", (void (*)())fs_rm, true, TYPE_ARG1},
+    {"rename", "rename file or directory", (void (*)())fs_rename, true, TYPE_ARG2},
+    // {"quit", "alias to exit", (void (*)())sh_exit, false, TYPE_EXIT},
     {"exit", "exit this shell", (void (*)())sh_exit, false, TYPE_EXIT},
     {NULL, NULL, NULL, false, 0}};
 #define CMD_MAP_LEN (sizeof(cmd_map) / sizeof(struct cmd_t))

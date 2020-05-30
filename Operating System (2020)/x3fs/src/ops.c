@@ -44,6 +44,7 @@ int fs_mkdir(const char *path)
     }
 
     fat[bid] = BLK_END;
+    sb->free_block_num--;
 
     fcb_t *fcb = &(cur_dir->fcb)[cur_dir->item_num];
     strncpy(fcb->fname, path, FNAME_LENGTH);
@@ -110,31 +111,6 @@ int fs_rmdir(const char *path)
                 {
                     report_error("rmdir: Directory not empty");
                 }
-                /*
-                else
-                {
-                    fs_cd(cur_dir->fcb[i].fname);
-                    
-                    for (int j = 0; j < sb->fcb_num_per_block; ++j)
-                    {
-                        if (fcb_exist(&cur_dir->fcb[j]))
-                        {
-                            if (!fcb_isdir(&cur_dir->fcb[j]))
-                            {
-                                fs_rm(cur_dir->fcb[j].fname);
-                            }
-                            else
-                            {
-                                fs_rmdir(cur_dir->fcb[j].fname);
-                            }
-                        }
-                        else
-                        {
-                            break;
-                        }
-                    }
-                    fs_cd("..");
-                }*/
 
                 bid_t bid, next_bid = cur_dir->fcb[i].bid;
                 while (next_bid > 1)
@@ -142,6 +118,7 @@ int fs_rmdir(const char *path)
                     bid = next_bid;
                     next_bid = fat[bid];
                     fat[bid] = BLK_FREE;
+                    sb->free_block_num++;
                 }
                 memset(&cur_dir->fcb[i], 0, sizeof(fcb_t));
 
@@ -182,23 +159,40 @@ out:
 */
 int fs_ls()
 {
+    char buffer[26];
+
+    printf("total %d\n", cur_dir->item_num);
     for (int i = 0; i < cur_dir->item_num; ++i)
     {
         if (fcb_exist(&cur_dir->fcb[i]))
         {
-            printf("%9s [%s\tbid=%d\tsize=%d\tcreated=%ld\tmodified=%ld]\n",
-                   cur_dir->fcb[i].fname,
-                   (fcb_isdir(&cur_dir->fcb[i]) ? "dir" : "file"),
+            strftime(buffer, 26, "%Y-%m-%d %H:%M", localtime(&cur_dir->fcb[i].modified_time));
+            printf("%s %6d %7s %12s %-9s\n",
+                   (fcb_isdir(&cur_dir->fcb[i]) ? "d" : "-"),
                    cur_dir->fcb[i].bid,
-                   cur_dir->fcb[i].size,
-                   cur_dir->fcb[i].created_time,
-                   cur_dir->fcb[i].modified_time);
+                   format_size(cur_dir->fcb[i].size),
+                   buffer,
+                   cur_dir->fcb[i].fname);
         }
         else
         {
             break;
         }
     }
+
+    return 0;
+}
+
+/*
+    stat
+*/
+int fs_stat()
+{
+    printf("Size\tBlocks\tUsed\tAvail\tCap\tFAT\tFCB\tBID\n");
+    printf("%s\t%d\t%d\t%d\t%.1f%%\t%d\t%d\t%d\n", format_size(sb->total_size),
+           sb->total_block_num, sb->total_block_num - sb->free_block_num, sb->free_block_num,
+           100.0 * (float)(sb->total_block_num - sb->free_block_num) / sb->total_block_num,
+           sb->fat_block_num * 2, sb->fcb_num_per_block, sb->data_start_bid);
 
     return 0;
 }
@@ -220,14 +214,12 @@ int fs_cd(const char *path)
     if (!strncmp(path, "..", FNAME_LENGTH)) /* parent dir */
     {
         found = true;
-        if (cur_dir->bid != root_bid)
-            pread(fd, cur_dir, sizeof(blk_t), offset_of(cur_dir->parent_bid));
+        pread(fd, cur_dir, sizeof(blk_t), offset_of(cur_dir->parent_bid));
     }
     else if (!strncmp(path, "/", FNAME_LENGTH)) /* root dir */
     {
         found = true;
-        if (cur_dir->bid != root_bid)
-            pread(fd, cur_dir, sizeof(blk_t), offset_of(sb->data_start_bid - 1));
+        pread(fd, cur_dir, sizeof(blk_t), offset_of(root_bid));
     }
     else /* sub dir */
     {
@@ -414,21 +406,14 @@ int fs_seek(int target_fd, int offset, int type)
 
     switch (type)
     {
-    case FS_SEEK_SET:
+    case SEEK_SET:
         ofs[target_fd].off = offset;
         break;
-    case FS_SEEK_CUR:
-        if (ofs[target_fd].off + offset > ofs[target_fd].fcb.size)
-        {
-            ofs[target_fd].off = ofs[target_fd].fcb.size;
-        }
-        else
-        {
-            ofs[target_fd].off += offset;
-        }
+    case SEEK_CUR:
+        ofs[target_fd].off += offset;
         break;
-    case FS_SEEK_END:
-        ofs[target_fd].off = ofs[target_fd].fcb.size;
+    case SEEK_END:
+        ofs[target_fd].off = ofs[target_fd].fcb.size + offset;
         break;
     default:
         break;
@@ -517,6 +502,7 @@ int fs_write(int target_fd, const char *buf, size_t size)
         }
         // ofs[target_fd].fcb.bid = new_bid;
         fat[new_bid] = BLK_END;
+        sb->free_block_num--;
         bid = new_bid;
         ofs[target_fd].fcb.bid = new_bid;
         ofs[target_fd].is_fcb_modified = true;
@@ -538,6 +524,7 @@ int fs_write(int target_fd, const char *buf, size_t size)
                 fat[bid] = new_bid;
             }
             fat[new_bid] = BLK_END;
+            sb->free_block_num--;
             bid = new_bid;
             off = 0;
             break;
@@ -580,6 +567,7 @@ int fs_write(int target_fd, const char *buf, size_t size)
                 fat[bid] = new_bid;
             }
             fat[new_bid] = BLK_END;
+            sb->free_block_num--;
             bid = new_bid;
             pbuf += n;
             count -= n;
@@ -709,6 +697,7 @@ int fs_rm(const char *path)
                     bid = next_bid;
                     next_bid = fat[bid];
                     fat[bid] = BLK_FREE; /* set block to free */
+                    sb->free_block_num++;
                 }
                 memset(fcb, 0, sizeof(fcb_t));
 
@@ -735,6 +724,62 @@ int fs_rm(const char *path)
     {
         report_error("rm: No such file or directory");
     }
+
+    pwrite(fd, cur_dir, sizeof(blk_t), offset_of(cur_dir->bid));
+
+    retval = 0;
+
+out:
+    return retval;
+}
+
+/*
+    rename old new
+*/
+int fs_rename(const char *old, const char *new)
+{
+    int retval = -1;
+
+    if (!check_filename_length(old))
+    {
+        report_error("rename: filename too long");
+    }
+
+    if (!check_filename_length(new))
+    {
+        report_error("rename: filename too long");
+    }
+
+    int index = -1;
+    bool found = false;
+    for (int i = 0; i < sb->fcb_num_per_block; ++i)
+    {
+        if (fcb_exist(&cur_dir->fcb[i]))
+        {
+            if (!strncmp(cur_dir->fcb[i].fname, new, FNAME_LENGTH))
+            {
+                report_error("rename: File exists");
+            }
+
+            if (!strncmp(cur_dir->fcb[i].fname, old, FNAME_LENGTH))
+            {
+                found = true;
+                index = i;
+            }
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    if (!found)
+    {
+        report_error("rm: No such file or directory");
+    }
+
+    // rename
+    strncpy(cur_dir->fcb[index].fname, new, FNAME_LENGTH);
 
     pwrite(fd, cur_dir, sizeof(blk_t), offset_of(cur_dir->bid));
 

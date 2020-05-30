@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -25,6 +26,32 @@ int find_available_fd()
         }
     }
     return -1;
+}
+
+char *format_size(uint32_t size)
+{
+    static char ssize[0xf] = {0};
+
+    memset(ssize, 0, 0xf);
+
+    if (size > 1024 * 1024 * 1024)
+    {
+        sprintf(ssize, "%.1fG", (float)size / (1024 * 1024 * 1024));
+    }
+    else if (size > 1024 * 1024)
+    {
+        sprintf(ssize, "%.1fM", (float)size / (1024 * 1024));
+    }
+    else if (size > 1024)
+    {
+        sprintf(ssize, "%.1fK", (float)size / 1024);
+    }
+    else
+    {
+        sprintf(ssize, "%dB", size);
+    }
+
+    return ssize;
 }
 
 char *get_dirname(dir_t *dir)
