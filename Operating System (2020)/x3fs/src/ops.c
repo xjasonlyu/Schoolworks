@@ -50,7 +50,7 @@ int fs_mkdir(const char *path)
     fcb->attrs = EXIST_MASK | DIR_MASK;
     fcb->bid = bid;
     cur_dir->item_num++;
-    // save current dir block to image file
+    // update current dir block to image file
     pwrite(fd, cur_dir, sizeof(blk_t), offset_of(cur_dir->bid));
 
     dir_t *new_dir = (dir_t *)calloc(1, sizeof(blk_t));
@@ -94,6 +94,18 @@ int fs_rmdir(const char *path)
                     /* is file */
                     // fs_rm(cur_dir->fcb[i].fname);
                     report_error("rmdir: Not a directory");
+                }
+
+                // check if sub dir empty
+                int item_num = 0;
+                dir_t *sub_dir = malloc(sizeof(blk_t));
+                pread(fd, sub_dir, sizeof(blk_t), offset_of(cur_dir->fcb[i].bid));
+                item_num = sub_dir->item_num;
+                free(sub_dir);
+
+                if (item_num > 0)
+                {
+                    report_error("rmdir: Directory not empty");
                 }
                 /*
                 else
@@ -203,12 +215,14 @@ int fs_cd(const char *path)
     if (!strncmp(path, "..", FNAME_LENGTH)) /* parent dir */
     {
         found = true;
-        pread(fd, cur_dir, sizeof(blk_t), offset_of(cur_dir->parent_bid));
+        if (cur_dir->bid != root_bid)
+            pread(fd, cur_dir, sizeof(blk_t), offset_of(cur_dir->parent_bid));
     }
     else if (!strncmp(path, "/", FNAME_LENGTH)) /* root dir */
     {
         found = true;
-        pread(fd, cur_dir, sizeof(blk_t), offset_of(sb->data_start_bid - 1));
+        if (cur_dir->bid != root_bid)
+            pread(fd, cur_dir, sizeof(blk_t), offset_of(sb->data_start_bid - 1));
     }
     else /* sub dir */
     {

@@ -22,7 +22,8 @@ int read_input(void)
     retval = read(STDIN_FILENO, buf, BUFSIZE - 1);
 
     if (retval == 0)
-        exit(EXIT_SUCCESS);
+        // exit(EXIT_SUCCESS);
+        exit_shell();
 
     if (retval < 0)
         printf("parse argument failed: %s\n", strerror(-retval));
@@ -52,7 +53,7 @@ int parse_args(void)
 
 void sh_promot()
 {
-    printf("(%s)> ", mounted ? get_dirname(cur_dir) : "NULL");
+    printf("(%s)> ", mounted ? get_abspath(cur_dir) : "NULL");
 }
 
 void sh_help()
@@ -67,6 +68,7 @@ void sh_help()
 
 void sh_pwd()
 {
+    puts(get_abspath(cur_dir));
 }
 
 void sh_mount(const char *filename)
@@ -100,13 +102,7 @@ void sh_umount()
 
 void sh_exit()
 {
-    if (mounted)
-    {
-        puts("Saving data to disk file...");
-        fs_writeto(NULL);
-    }
-
-    exit(EXIT_SUCCESS);
+    exit_shell();
 }
 
 int main()

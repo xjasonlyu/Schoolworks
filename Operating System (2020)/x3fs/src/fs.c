@@ -69,16 +69,23 @@ out:
 
 int fs_writeto(const char *filename)
 {
+    // set fd offset to zero
+    lseek(fd, 0, SEEK_SET);
+
     blk_t *blk = calloc(1, sizeof(blk_t));
     // superblock
     memcpy(blk, sb, sizeof(sb_t));
     write(fd, blk, sizeof(blk_t));
 
+    blk = realloc(blk, sizeof(blk_t) * sb->fat_block_num);
+    memcpy(blk, fat, sizeof(blk_t) * sb->fat_block_num);
     // fat1
-    memcpy(blk, fat, sizeof(blk_t));
-    write(fd, blk, sizeof(blk_t));
+    write(fd, blk, sizeof(blk_t) * sb->fat_block_num);
     // fat2
-    write(fd, blk, sizeof(blk_t));
+    write(fd, blk, sizeof(blk_t) * sb->fat_block_num);
+
+    // release
+    close(fd);
 
     free(blk);
     free(sb);

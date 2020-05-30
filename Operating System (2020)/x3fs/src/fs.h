@@ -21,7 +21,7 @@ extern int fd;
 
 #define BLOCK_SIZE 4096
 #define BLK_FREE 0
-#define BLK_END 1
+#define BLK_END -1
 
 typedef uint16_t bid_t; // block id
 typedef uint8_t blk_t[BLOCK_SIZE];
@@ -65,7 +65,7 @@ typedef struct opened_file
     off_t off; // offset
     bool is_fcb_modified;
 } of_t;
-#define MAX_FD 2
+#define MAX_FD 0x0F
 #define check_opened_fd(x) ((x) >= 0 && (x) <= MAX_FD)
 extern of_t ofs[MAX_FD];
 
@@ -81,6 +81,7 @@ typedef struct directory
 #define dir_check_magic(x) (((dir_t *)x)->magic == MAGIC_DIR)
 
 extern sb_t *sb;
+#define root_bid (1 + 2 * sb->fat_block_num)
 extern bid_t *fat;
 extern dir_t *cur_dir;
 
@@ -105,5 +106,6 @@ int fs_exit();
 bid_t find_free_block();
 int find_available_fd();
 char *get_dirname(dir_t *);
+char *get_abspath(dir_t *);
 
 #endif

@@ -31,7 +31,9 @@ char *get_dirname(dir_t *dir)
 {
     static char name[FNAME_LENGTH] = {0};
 
-    if (dir->parent_bid == dir->bid)
+    memset(name, 0, FNAME_LENGTH);
+
+    if (dir->bid == root_bid)
     {
         // root dir
         strncpy(name, "/", FNAME_LENGTH);
@@ -39,7 +41,7 @@ char *get_dirname(dir_t *dir)
     else
     {
         dir_t *parent_dir = (dir_t *)malloc(sizeof(blk_t));
-        pread(fd, parent_dir, sizeof(blk_t), offset_of(cur_dir->parent_bid));
+        pread(fd, parent_dir, sizeof(blk_t), offset_of(dir->parent_bid));
         for (int i = 0; i < parent_dir->item_num; ++i)
         {
             if (parent_dir->fcb[i].bid == dir->bid)
@@ -54,4 +56,33 @@ char *get_dirname(dir_t *dir)
     }
 
     return name;
+}
+
+char *get_abspath(dir_t *dir)
+{
+    static char path[0xFF] = {0};
+
+    if (dir->bid == root_bid)
+    {
+        // root dir
+        memset(path, 0, 0xFF);
+        strncpy(path, "/", FNAME_LENGTH);
+    }
+    else
+    {
+        dir_t *parent_dir = (dir_t *)malloc(sizeof(blk_t));
+        pread(fd, parent_dir, sizeof(blk_t), offset_of(dir->parent_bid));
+
+        // recursive get
+        get_abspath(parent_dir);
+
+        if (path[strlen(path) - 1] != '/')
+            strcat(path, "/");
+        strncat(path, get_dirname(dir), FNAME_LENGTH);
+
+        if (parent_dir)
+            free(parent_dir);
+    }
+
+    return path;
 }

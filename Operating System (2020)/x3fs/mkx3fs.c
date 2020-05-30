@@ -46,6 +46,9 @@ int main(int argc, char const *argv[])
     sb->data_start_bid = 2 * sb->fat_block_num + 2;
     sb->fat_crc = 0;
     write(fd, sb, sizeof(blk_t));
+    printf("size=%d total_blocks=%d fat_blocks=%d fcbs=%d sbid=%d\n",
+           sb->total_size, sb->total_block_num, sb->fat_block_num,
+           sb->fcb_num_per_block, sb->data_start_bid);
     puts("superblock ok");
 
     sb = malloc(sizeof(sb_t));
@@ -84,7 +87,7 @@ int main(int argc, char const *argv[])
     dir_t *root_dir = (dir_t *)blk;
     root_dir->magic = MAGIC_DIR;
     root_dir->item_num = 0;
-    root_dir->bid = sb->data_start_bid - 1;
+    root_dir->bid = sb->data_start_bid - 1; // usually is 3
     root_dir->parent_bid = sb->data_start_bid - 1;
     write(fd, root_dir, sizeof(blk_t));
     puts("root directory ok");

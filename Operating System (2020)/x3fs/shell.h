@@ -26,6 +26,17 @@
         }                                                \
     } while (0)
 
+#define exit_shell()                             \
+    do                                           \
+    {                                            \
+        if (mounted)                             \
+        {                                        \
+            puts("Saving data to disk file..."); \
+            fs_writeto(NULL);                    \
+        }                                        \
+        exit(EXIT_SUCCESS);                      \
+    } while (0)
+
 #define BUFSIZE 0xFF
 
 extern char buf[BUFSIZE];
@@ -60,6 +71,7 @@ struct cmd_t cmd_map[] = {
     {"rmdir", "remove directory", (void (*)())fs_rmdir, true, TYPE_ARG1},
     {"ls", "list files", (void (*)())fs_ls, true, 0},
     {"cd", "change directory", (void (*)())fs_cd, true, TYPE_ARG1},
+    {"pwd", "return working directory name", (void (*)())sh_pwd, true, TYPE_ARG0},
     {"touch", "create file", (void (*)())fs_create, true, TYPE_ARG1},
     // {"create", "", (void (*)())fs_create, 1},
     {"open", "open file", (void (*)())fs_open, true, TYPE_ARG1},
