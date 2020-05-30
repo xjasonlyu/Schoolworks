@@ -253,6 +253,8 @@ int fs_cd(const char *path)
         report_error("cd: no such file or directory");
     }
 
+    retval = 0;
+
 out:
     return retval;
 }
@@ -308,6 +310,8 @@ int fs_create(const char *path)
     // save current dir block to image file
     pwrite(fd, cur_dir, sizeof(blk_t), offset_of(cur_dir->bid));
 
+    retval = 0;
+
 out:
     return retval;
 }
@@ -317,7 +321,7 @@ out:
 */
 int fs_open(const char *path)
 {
-    int retval = -1;
+    int retval = -1; /* opened fd */
 
     if (!check_filename_length(path))
     {
@@ -343,9 +347,9 @@ int fs_open(const char *path)
                     {
                         if (!strncmp(ofs[index].fcb.fname, path, FNAME_LENGTH))
                         {
-                            printf("open: fd: %d\n", index); /* already opened */
-                            retval = 0;
-                            goto out;
+                            // retval = index;
+                            // goto out;
+                            report_error("open: file already opened");
                         }
                     }
                 }
@@ -361,7 +365,8 @@ int fs_open(const char *path)
                 ofs[available_fd].fcb_id = i;
                 ofs[available_fd].off = 0;
                 ofs[available_fd].is_fcb_modified = false;
-                printf("open: fd: %d\n", available_fd);
+                // printf("open: fd: %d\n", available_fd);
+                retval = available_fd;
                 break;
             }
         }
@@ -375,8 +380,6 @@ int fs_open(const char *path)
     {
         report_error("open: file not found");
     }
-
-    retval = 0;
 
 out:
     return retval;
@@ -392,13 +395,13 @@ int fs_close(int target_fd)
     // fd validation check
     if (!check_opened_fd(target_fd))
     {
-        report_error("Illegal fd");
+        report_error("close: illegal fd");
     }
 
     // fd empty
     if (!ofs[target_fd].not_empty)
     {
-        report_error("Illegal fd");
+        report_error("close: illegal fd");
     }
 
     // save modified file
@@ -419,6 +422,8 @@ int fs_close(int target_fd)
 
     // reset to zero
     memset(&ofs[target_fd], 0, sizeof(of_t));
+
+    retval = 0;
 
 out:
     return retval;
@@ -441,14 +446,12 @@ int fs_write(int target_fd, const char *buf, size_t size)
         report_error("write: illegal fd");
     }
 
-    /*
-    // write buffer
-    char *buf = (char *)malloc(sizeof(blk_t));
-    if (!gets(buf))
+    if (!size)
     {
-        report_error("Write something..");
-    }*/
+        return 0;
+    }
 
+    // alloc new bid
     bid_t bid = ofs[target_fd].fcb.bid;
     if (bid <= 1)
     {
@@ -457,15 +460,14 @@ int fs_write(int target_fd, const char *buf, size_t size)
         {
             report_error("write: no free space");
         }
-        if (bid)
-        {
-            ofs[target_fd].fcb.bid = new_bid;
-        }
+        // ofs[target_fd].fcb.bid = new_bid;
         fat[new_bid] = BLK_END;
-        ofs[target_fd].fcb.bid = bid = new_bid;
+        bid = new_bid;
+        ofs[target_fd].fcb.bid = new_bid;
         ofs[target_fd].is_fcb_modified = true;
     }
 
+    // find bid to continue
     off_t off = ofs[target_fd].off;
     while (off >= BLOCK_SIZE)
     {
@@ -474,7 +476,7 @@ int fs_write(int target_fd, const char *buf, size_t size)
             bid_t new_bid = find_free_block();
             if (!new_bid)
             {
-                report_error("write: no free space");
+                report_error("write: no more free space");
             }
             if (bid)
             {
@@ -483,6 +485,7 @@ int fs_write(int target_fd, const char *buf, size_t size)
             fat[new_bid] = BLK_END;
             bid = new_bid;
             off = 0;
+            break;
         }
         bid = fat[bid];
         off -= BLOCK_SIZE;
@@ -490,6 +493,7 @@ int fs_write(int target_fd, const char *buf, size_t size)
 
     //  ofs[target_fd].fcb.size = 0;
 
+    int written = 0;
     int count = size;
     char *pbuf = (char *)buf;
 
@@ -501,13 +505,16 @@ int fs_write(int target_fd, const char *buf, size_t size)
             ofs[target_fd].off += actually_wrote;
             ofs[target_fd].fcb.size += actually_wrote;
             ofs[target_fd].is_fcb_modified = true;
+            written += actually_wrote;
             break;
         }
-        else /* need new block to append */
+        else /* need new blocks to append */
         {
-            int actually_wrote = pwrite(fd, pbuf, BLOCK_SIZE - off, offset_of(bid) + off);
+            int n = BLOCK_SIZE - off;
+            int actually_wrote = pwrite(fd, pbuf, n, offset_of(bid) + off);
             ofs[target_fd].off += actually_wrote;
             ofs[target_fd].fcb.size += actually_wrote;
+            written += actually_wrote;
             bid_t new_bid = find_free_block();
             if (!new_bid)
             {
@@ -519,12 +526,13 @@ int fs_write(int target_fd, const char *buf, size_t size)
             }
             fat[new_bid] = BLK_END;
             bid = new_bid;
-            // buf += BLOCK_SIZE - off;
-            pbuf += BLOCK_SIZE - off;
-            count -= BLOCK_SIZE - off;
+            pbuf += n;
+            count -= n;
             off = 0;
         }
     }
+
+    retval = written;
 
 out:
     // if (buf)
@@ -541,28 +549,35 @@ int fs_read(int target_fd, const char *buf, size_t size)
 
     if (!check_opened_fd(target_fd))
     {
-        report_error("write: illegal fd");
+        report_error("read: illegal fd");
     }
 
     if (!ofs[target_fd].not_empty)
     {
-        report_error("write: illegal fd");
+        report_error("read: illegal fd");
     }
 
-    // printf("Read up to ? bytes: ");
-    // int count;
-    // scanf("%d", &count);
-    int count = size;
+    if (!size || !ofs[target_fd].fcb.size)
+    {
+        // file empty
+        return 0;
+    }
+
+    // if (size > ofs[target_fd].fcb.size)
+    //     size = ofs[target_fd].fcb.size;
+
+    int count = min(size, ofs[target_fd].fcb.size - ofs[target_fd].off);
 
     bid_t bid = ofs[target_fd].fcb.bid;
     off_t off = ofs[target_fd].off;
-    while (off > BLOCK_SIZE)
+    while (off >= BLOCK_SIZE)
     {
         bid = fat[bid];
         off -= BLOCK_SIZE;
     }
 
     int n = 0;
+    int written = 0;
     char *pbuf = (char *)buf;
 
     while (ofs[target_fd].off < ofs[target_fd].fcb.size)
@@ -571,32 +586,36 @@ int fs_read(int target_fd, const char *buf, size_t size)
         {
             blk_t *blk = (blk_t *)malloc(sizeof(blk_t));
             pread(fd, blk, count, offset_of(bid) + off);
-            // write(0, blk, min(count, ofs[target_fd].fcb.size - ofs[target_fd].off));
             n = min(count, ofs[target_fd].fcb.size - ofs[target_fd].off);
             memcpy(pbuf, blk, n);
             pbuf += n;
+
+            ofs[target_fd].off += n;
+            count -= n;
+            written += n;
+
             free(blk);
-            ofs[target_fd].off += min(count, ofs[target_fd].fcb.size - ofs[target_fd].off);
-            count = 0;
             break;
         }
         else
         {
             blk_t *blk = (blk_t *)malloc(sizeof(blk_t));
-            pread(fd, blk, BLOCK_SIZE - off, offset_of(bid) + off);
-            // write(0, blk, BLOCK_SIZE - off);
             n = BLOCK_SIZE - off;
+            pread(fd, blk, n, offset_of(bid) + off);
+
             memcpy(pbuf, blk, n);
             pbuf += n;
-            free(blk);
-            ofs[target_fd].off += BLOCK_SIZE - off;
-            count -= BLOCK_SIZE - off;
+
+            ofs[target_fd].off += n;
+            count -= n;
+            written += n;
             // TODO
             off = 0;
+            free(blk);
         }
     }
 
-    // puts("");
+    retval = written;
 
 out:
     return retval;
@@ -665,6 +684,7 @@ int fs_rm(const char *path)
     pwrite(fd, cur_dir, sizeof(blk_t), offset_of(cur_dir->bid));
 
     retval = 0;
+
 out:
     return retval;
 }

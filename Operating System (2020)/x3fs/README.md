@@ -5,3 +5,4 @@ Thanks a lot to oyiadin's [g3fs](https://github.com/oyiadin/Schoolworks/tree/mas
 What's new?
 
 - bug fixes
+- better CLI

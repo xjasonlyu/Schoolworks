@@ -9,19 +9,19 @@
 
 extern int fd;
 
-#define report_error(msg, val...) \
-    do                            \
-    {                             \
-        puts(msg);                \
-        retval = (-1, ##val);     \
-        goto out;                 \
+#define report_error(msg, val...)  \
+    do                             \
+    {                              \
+        fprintf(stderr, msg "\n"); \
+        retval = (-1, ##val);      \
+        goto out;                  \
     } while (0)
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
 #define BLOCK_SIZE 4096
 #define BLK_FREE 0
-#define BLK_END -1
+#define BLK_END 1
 
 typedef uint16_t bid_t; // block id
 typedef uint8_t blk_t[BLOCK_SIZE];

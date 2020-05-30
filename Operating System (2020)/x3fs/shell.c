@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include "fs.h"
 #include "shell.h"
@@ -51,6 +54,11 @@ int parse_args(void)
     return (argc = pargv - argv);
 }
 
+void sh_init()
+{
+    return;
+}
+
 void sh_promot()
 {
     printf("(%s)> ", mounted ? get_abspath(cur_dir) : "NULL");
@@ -75,12 +83,12 @@ void sh_mount(const char *filename)
 {
     if (mounted)
     {
-        puts("Current disk is in use");
+        fprintf(stderr, "Current disk is in use\n");
         return;
     }
     if (access(filename, F_OK) < 0)
     {
-        puts("Disk file not found");
+        fprintf(stderr, "Disk file not found\n");
         return;
     }
 
@@ -92,12 +100,79 @@ void sh_umount()
 {
     if (!mounted)
     {
-        puts("No disk mounted");
+        fprintf(stderr, "No disk mounted\n");
         return;
     }
 
     fs_writeto(NULL);
     mounted = false;
+}
+
+void sh_cat(const char *filename)
+{
+    int _fd = fs_open(filename);
+    if (_fd < 0)
+    {
+        fprintf(stderr, "cat: cannot open %s\n", filename);
+        return;
+    }
+
+    int n = 0;
+    int size = ofs[_fd].fcb.size;
+    char *b = malloc(BLOCK_SIZE);
+
+    while (size > 0)
+    {
+        if ((n = fs_read(_fd, b, BLOCK_SIZE)) < 0)
+        {
+            fprintf(stderr, "cat: read error\n");
+            break;
+        }
+        write(STDOUT_FILENO, b, n);
+        size -= BLOCK_SIZE;
+    }
+
+    free(b);
+    fs_close(_fd);
+}
+
+void sh_cpi(const char *src, const char *dst)
+{
+    int src_fd = open(src, O_RDONLY);
+    if (src_fd < 0)
+    {
+        fprintf(stderr, "cpi: cannot open %s\n", src);
+        return;
+    }
+
+    if (fs_create(dst) < 0)
+    {
+        fprintf(stderr, "cpi: cannot create %s\n", dst);
+        return;
+    }
+
+    int _fd = fs_open(dst);
+    if (_fd < 0)
+    {
+        fprintf(stderr, "cpi: cannot open %s\n", dst);
+        return;
+    }
+
+    void *b = malloc(BLOCK_SIZE);
+    int n = 0;
+    do
+    {
+        n = read(src_fd, b, BLOCK_SIZE);
+        // write(STDOUT_FILENO, b, n);
+        fs_write(_fd, b, n);
+    } while (n > 0);
+
+    free(b);
+    close(src_fd);
+
+cpi_out:
+    if (fs_close(_fd) < 0)
+        fprintf(stderr, "cpi: fd: %d close failed\n", _fd);
 }
 
 void sh_exit()
@@ -114,6 +189,8 @@ int main()
 
     int n = 0;
     char **p = argv;
+
+    sh_init(); /* init */
 
     while (1)
     {
@@ -134,17 +211,22 @@ int main()
                 switch (cmd_map[i].type)
                 {
                 case TYPE_ARG0:
-                    check_protexted_cmd(cmd_map[i]);
+                    check_protected_cmd(cmd_map[i]);
                     ((int (*)())(cmd_map[i].func))();
                     break;
                 case TYPE_ARG1:
                     check_arg_length(2);
-                    check_protexted_cmd(cmd_map[i]);
+                    check_protected_cmd(cmd_map[i]);
                     ((int (*)(char *, ...))(cmd_map[i].func))(argv[1]);
+                    break;
+                case TYPE_ARG2:
+                    check_arg_length(3);
+                    check_protected_cmd(cmd_map[i]);
+                    ((int (*)(char *, ...))(cmd_map[i].func))(argv[1], argv[2]);
                     break;
                 case 10:
                     check_arg_length(2);
-                    check_protexted_cmd(cmd_map[i]);
+                    check_protected_cmd(cmd_map[i]);
                     ((int (*)(int, ...))(cmd_map[i].func))(atoi(argv[1]));
                     break;
                 case TYPE_EXIT:
