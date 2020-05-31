@@ -60,6 +60,10 @@ int fs_loadfrom(const char *filename)
     // load root dir to current dir
     cur_dir = malloc(sizeof(blk_t));
     read(fd, cur_dir, sizeof(blk_t));
+    if (!dir_check_magic(cur_dir))
+    {
+        report_error("Magic number of directory didn't match");
+    }
 
 out:
     return retval;

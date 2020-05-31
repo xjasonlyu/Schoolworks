@@ -11,14 +11,14 @@ int fs_mkdir(const char *path)
 {
     int retval = -1;
 
-    if (!check_filename_length(path))
+    if (!check_filename(path))
     {
-        report_error("Dirname too long");
+        report_error("Filename invalid");
     }
 
     if (!strcmp(path, ".."))
     {
-        report_error("Dirname cannot be `..`");
+        report_error("Filename cannot be `..`");
     }
 
     for (int i = 0; i < sb->fcb_num_per_block; ++i)
@@ -79,9 +79,9 @@ int fs_rmdir(const char *path)
 {
     int retval = -1;
 
-    if (!check_filename_length(path))
+    if (!check_filename(path))
     {
-        report_error("Filename too long");
+        report_error("Filename invalid");
     }
 
     bool found = false;
@@ -218,58 +218,7 @@ int fs_stat()
 */
 int fs_cd(const char *path)
 {
-    int retval = -1;
-
-    if (!check_filename_length(path))
-    {
-        report_error("Filename too long");
-    }
-
-    bool found = false;
-
-    if (!strncmp(path, "..", FNAME_LENGTH)) /* parent dir */
-    {
-        found = true;
-        pread(fd, cur_dir, sizeof(blk_t), offset_of(cur_dir->parent_bid));
-    }
-    else if (!strncmp(path, "/", FNAME_LENGTH)) /* root dir */
-    {
-        found = true;
-        pread(fd, cur_dir, sizeof(blk_t), offset_of(root_bid));
-    }
-    else /* sub dir */
-    {
-        for (int i = 0; i < cur_dir->item_num; ++i)
-        {
-            if (fcb_exist(&cur_dir->fcb[i]))
-            {
-                if (!strncmp(cur_dir->fcb[i].fname, path, FNAME_LENGTH))
-                {
-                    found = true;
-                    if (fcb_isfile(&cur_dir->fcb[i]))
-                    {
-                        report_error("Not a directory");
-                    }
-                    pread(fd, cur_dir, sizeof(blk_t), offset_of(cur_dir->fcb[i].bid));
-                    break;
-                }
-            }
-            else
-            {
-                break;
-            }
-        }
-    }
-
-    if (!found)
-    {
-        report_error("No such file or directory");
-    }
-
-    retval = 0;
-
-out:
-    return retval;
+    return parse_path(path, cur_dir);
 }
 
 /*
@@ -279,9 +228,9 @@ int fs_create(const char *path)
 {
     int retval = -1;
 
-    if (!check_filename_length(path))
+    if (!check_filename(path))
     {
-        report_error("Filename too long");
+        report_error("Filename invalid");
     }
 
     if (!strcmp(path, ".."))
@@ -338,9 +287,9 @@ int fs_open(const char *filename, int oflag)
 {
     int retval = -1; /* opened fd */
 
-    if (!check_filename_length(filename))
+    if (!check_filename(filename))
     {
-        report_error("Filename too long");
+        report_error("Filename invalid");
     }
 
     if (!check_oflag(oflag))
@@ -717,9 +666,9 @@ int fs_rm(const char *path)
 {
     int retval = -1;
 
-    if (!check_filename_length(path))
+    if (!check_filename(path))
     {
-        report_error("Filename too long");
+        report_error("Filename invalid");
     }
 
     bool found = false;
@@ -786,14 +735,14 @@ int fs_rename(const char *old, const char *new)
 {
     int retval = -1;
 
-    if (!check_filename_length(old))
+    if (!check_filename(old))
     {
-        report_error("Filename too long");
+        report_error("Filename invalid");
     }
 
-    if (!check_filename_length(new))
+    if (!check_filename(new))
     {
-        report_error("Filename too long");
+        report_error("Filename invalid");
     }
 
     int index = -1;

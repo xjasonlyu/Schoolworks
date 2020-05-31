@@ -45,6 +45,7 @@ typedef struct superblock
 #define sb_check_magic(x) (((sb_t *)x)->magic == MAGIC_SUPERBLOCK)
 
 #define FNAME_LENGTH 9
+#define PATH_LENGTH 0xFF
 typedef struct fcb
 {
     char fname[FNAME_LENGTH]; // 9
@@ -135,5 +136,7 @@ int find_available_fd();
 char *format_size(uint32_t);
 char *get_dirname(dir_t *);
 char *get_abspath(dir_t *);
+bool check_filename(const char *);
+int parse_path(const char *, dir_t *);
 
 #endif
