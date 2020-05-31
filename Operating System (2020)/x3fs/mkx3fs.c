@@ -64,10 +64,11 @@ int main(int argc, char *argv[])
     sb->magic = MAGIC_SUPERBLOCK;
     sb->total_size = total_size;
     sb->total_block_num = total_size / BLOCK_SIZE;
-    sb->free_block_num = sb->total_block_num;
     sb->fat_block_num = ((sb->total_block_num - 1) / (BLOCK_SIZE / 2)) + 1;
     sb->fcb_num_per_block = (BLOCK_SIZE - sizeof(dir_t)) / sizeof(fcb_t);
     sb->data_start_bid = 2 * sb->fat_block_num + 2;
+    // 1 superblock + 2 FAT blocks + 1 root dir
+    sb->free_block_num = sb->total_block_num - 2 * sb->fat_block_num - 2;
     sb->fat_crc = 0;
     write(fd, sb, sizeof(blk_t));
     printf("size=%d total_blocks=%d fat_blocks=%d fcbs=%d sbid=%d\n",

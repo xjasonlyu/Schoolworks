@@ -29,7 +29,7 @@ int read_input(void)
         exit_shell();
 
     if (retval < 0)
-        printf("parse argument failed: %s\n", strerror(-retval));
+        errorf("parse argument failed: %s", strerror(-retval));
     return retval;
 }
 
@@ -91,12 +91,12 @@ void sh_mount(const char *filename)
 {
     if (mounted)
     {
-        fprintf(stderr, "Current disk is in use\n");
+        errorf("Current disk is in use");
         return;
     }
     if (access(filename, F_OK) < 0)
     {
-        fprintf(stderr, "Disk file not found\n");
+        errorf("Disk file not found");
         return;
     }
 
@@ -108,7 +108,7 @@ void sh_umount()
 {
     if (!mounted)
     {
-        fprintf(stderr, "No disk mounted\n");
+        errorf("No disk mounted");
         return;
     }
 
@@ -121,7 +121,7 @@ void sh_cat(const char *filename)
     int _fd = fs_open(filename);
     if (_fd < 0)
     {
-        fprintf(stderr, "cat: cannot open %s\n", filename);
+        // errorf( "cannot open %s", filename);
         return;
     }
 
@@ -133,10 +133,13 @@ void sh_cat(const char *filename)
     {
         if ((n = fs_read(_fd, b, BLOCK_SIZE)) < 0)
         {
-            fprintf(stderr, "cat: read error\n");
+            // errorf( "read error");
             break;
         }
-        write(STDOUT_FILENO, b, n);
+        if (write(STDOUT_FILENO, b, n) < 0)
+        {
+            break;
+        }
         size -= BLOCK_SIZE;
     }
 
@@ -149,7 +152,7 @@ void sh_append(const char *filename)
     int _fd = fs_open(filename);
     if (_fd < 0)
     {
-        fprintf(stderr, "append: cannot open %s\n", filename);
+        // errorf("cannot open %s", filename);
         return;
     }
 
@@ -157,13 +160,13 @@ void sh_append(const char *filename)
     fs_seek(_fd, 0, SEEK_END);
 
     int n = 0;
-    char input[0x100] = {0};
-    while (1)
+    char buffer[0x100] = {0};
+    while ((n = read(STDIN_FILENO, buffer, 0xFF)) > 0)
     {
-        n = read(STDIN_FILENO, buf, 0xFF);
-        if (n <= 0)
+        if (fs_write(_fd, buffer, n) < 0)
+        {
             break;
-        fs_write(_fd, buf, n);
+        }
     }
 
     fs_close(_fd);
@@ -174,13 +177,13 @@ void sh_cpi(const char *src, const char *dst)
     int src_fd = open(src, O_RDONLY);
     if (src_fd < 0)
     {
-        fprintf(stderr, "cpi: cannot open %s\n", src);
+        errorf("cannot open %s", src);
         return;
     }
 
     if (fs_create(dst) < 0)
     {
-        fprintf(stderr, "cpi: cannot create %s\n", dst);
+        // errorf("cannot create %s", dst);
         close(src_fd);
         return;
     }
@@ -188,18 +191,20 @@ void sh_cpi(const char *src, const char *dst)
     int dst_fd = fs_open(dst);
     if (dst_fd < 0)
     {
-        fprintf(stderr, "cpi: cannot open %s\n", dst);
+        // errorf("cannot open %s", dst);
         close(src_fd);
         return;
     }
 
     void *b = malloc(BLOCK_SIZE);
     int n = 0;
-    do
+    while ((n = read(src_fd, b, BLOCK_SIZE)) > 0)
     {
-        n = read(src_fd, b, BLOCK_SIZE);
-        fs_write(dst_fd, b, n);
-    } while (n > 0);
+        if (fs_write(dst_fd, b, n) < 0)
+        {
+            break;
+        }
+    }
 
     free(b);
     close(src_fd);
@@ -210,14 +215,14 @@ void sh_cpo(const char *src, const char *dst)
 {
     if (access(dst, F_OK) != -1)
     {
-        fprintf(stderr, "cpo: %s: file exists\n", dst);
+        errorf("%s: File exists", dst);
         return;
     }
 
     int src_fd = fs_open(src);
     if (src_fd < 0)
     {
-        fprintf(stderr, "cpo: cannot open %s\n", src);
+        // errorf("cannot open %s", src);
         return;
     }
 
@@ -225,18 +230,20 @@ void sh_cpo(const char *src, const char *dst)
                       S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
     if (dst_fd < 0)
     {
-        fprintf(stderr, "cpo: cannot create %s\n", dst);
+        errorf("cannot create %s", dst);
         fs_close(src_fd);
         return;
     }
 
     void *b = malloc(BLOCK_SIZE);
     int n = 0;
-    do
+    while ((n = fs_read(src_fd, b, BLOCK_SIZE)) > 0)
     {
-        n = fs_read(src_fd, b, BLOCK_SIZE);
-        write(dst_fd, b, n);
-    } while (n > 0);
+        if (write(dst_fd, b, n) < 0)
+        {
+            break;
+        }
+    }
 
     free(b);
     close(dst_fd);
@@ -308,7 +315,7 @@ int main()
         }
         if (i + 1 >= CMD_MAP_LEN)
         {
-            puts("shell: command not found");
+            puts("command not found");
         }
     }
 

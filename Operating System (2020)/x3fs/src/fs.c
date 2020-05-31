@@ -25,15 +25,13 @@ int fs_loadfrom(const char *filename)
     struct stat stat_buf;
     if (stat(filename, &stat_buf) < 0)
     {
-        printf("error when stat: %s\n", strerror(-errno));
+        fprintf(stderr, "error when stat: %s\n", strerror(-errno));
         retval = -errno;
         goto out;
     }
     if ((int)stat_buf.st_size < sizeof(blk_t))
     {
-        puts("short superblock block!");
-        retval = -1;
-        goto out;
+        report_error("short superblock block!");
     }
 
     blk_t buf;
@@ -86,11 +84,11 @@ int fs_writeto(const char *filename)
 
     // release
     close(fd);
-
     free(blk);
     free(sb);
     free(fat);
     free(cur_dir);
+
     return 0;
 }
 

@@ -10,12 +10,12 @@
 
 extern int fd;
 
-#define report_error(msg, val...)  \
-    do                             \
-    {                              \
-        fprintf(stderr, msg "\n"); \
-        retval = (-1, ##val);      \
-        goto out;                  \
+#define report_error(msg, val...)                       \
+    do                                                  \
+    {                                                   \
+        fprintf(stderr, "%s: " msg "\n", __FUNCTION__); \
+        retval = (-1, ##val);                           \
+        goto out;                                       \
     } while (0)
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
@@ -103,13 +103,13 @@ int fs_create(const char *path);
 int fs_open(const char *path);
 int fs_close(int);
 #ifndef SEEK_SET
-#define	SEEK_SET	0	/* set file offset to offset */
+#define SEEK_SET 0 /* set file offset to offset */
 #endif
 #ifndef SEEK_CUR
-#define	SEEK_CUR	1	/* set file offset to current plus offset */
+#define SEEK_CUR 1 /* set file offset to current plus offset */
 #endif
 #ifndef SEEK_END
-#define	SEEK_END	2	/* set file offset to EOF plus offset */
+#define SEEK_END 2 /* set file offset to EOF plus offset */
 #endif
 int fs_seek(int, int, int);
 int fs_write(int, const char *, size_t);

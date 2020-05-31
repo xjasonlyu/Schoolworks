@@ -6,12 +6,18 @@
 
 #include "fs.h"
 
+#define errorf(msg, val...)                                    \
+    do                                                         \
+    {                                                          \
+        fprintf(stderr, "%s: " msg "\n", __FUNCTION__, ##val); \
+    } while (0)
+
 #define check_arg_length(x)                                \
     do                                                     \
     {                                                      \
         if (argc < (x))                                    \
         {                                                  \
-            fprintf(stderr, "shell: too few arguments\n"); \
+            fprintf(stderr, "too few arguments\n"); \
             goto out_loop;                                 \
         }                                                  \
     } while (0)
@@ -21,7 +27,7 @@
     {                                                             \
         if (!mounted && (x).protected)                            \
         {                                                         \
-            fprintf(stderr, "shell: mount before %s\n", (x).cmd); \
+            fprintf(stderr, "mount before %s\n", (x).cmd); \
             goto out_loop;                                        \
         }                                                         \
     } while (0)
