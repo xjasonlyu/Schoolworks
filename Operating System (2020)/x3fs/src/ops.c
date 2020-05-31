@@ -47,7 +47,7 @@ int fs_mkdir(const char *path)
     sb->free_block_num--;
 
     fcb_t *fcb = &(cur_dir->fcb)[cur_dir->item_num];
-    strncpy(fcb->fname, path, FNAME_LENGTH);
+    strlcpy(fcb->fname, path, FNAME_LENGTH + 1);
     fcb->size = 0;
     fcb->attrs = EXIST_MASK | DIR_MASK;
     fcb->bid = bid;
@@ -262,7 +262,7 @@ int fs_create(const char *path)
     }
 
     fcb_t *fcb = &cur_dir->fcb[cur_dir->item_num];
-    strncpy(fcb->fname, path, FNAME_LENGTH);
+    strlcpy(fcb->fname, path, FNAME_LENGTH + 1);
     fcb->size = 0;
     fcb->bid = 0;
     fcb->attrs = EXIST_MASK;
@@ -774,7 +774,7 @@ int fs_rename(const char *old, const char *new)
     }
 
     // rename
-    strncpy(cur_dir->fcb[index].fname, new, FNAME_LENGTH);
+    strlcpy(cur_dir->fcb[index].fname, new, FNAME_LENGTH + 1);
 
     pwrite(fd, cur_dir, sizeof(blk_t), offset_of(cur_dir->bid));
 

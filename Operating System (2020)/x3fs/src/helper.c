@@ -56,14 +56,14 @@ char *format_size(uint32_t size)
 
 char *get_dirname(dir_t *dir)
 {
-    static char name[FNAME_LENGTH] = {0};
+    static char name[FNAME_LENGTH + 1] = {0};
 
-    memset(name, 0, FNAME_LENGTH);
+    // memset(name, 0, FNAME_LENGTH);
 
     if (dir->bid == root_bid)
     {
         // root dir
-        strncpy(name, "/", FNAME_LENGTH);
+        strlcpy(name, "/", FNAME_LENGTH + 1);
     }
     else
     {
@@ -73,7 +73,7 @@ char *get_dirname(dir_t *dir)
         {
             if (parent_dir->fcb[i].bid == dir->bid)
             {
-                strncpy(name, parent_dir->fcb[i].fname, FNAME_LENGTH);
+                strlcpy(name, parent_dir->fcb[i].fname, FNAME_LENGTH + 1);
                 break;
             }
         }
@@ -92,8 +92,8 @@ char *get_abspath(dir_t *dir)
     if (dir->bid == root_bid)
     {
         // root dir
-        memset(path, 0, PATH_LENGTH);
-        strncpy(path, "/", FNAME_LENGTH);
+        // memset(path, 0, PATH_LENGTH);
+        strlcpy(path, "/", FNAME_LENGTH + 1);
     }
     else
     {
@@ -104,8 +104,8 @@ char *get_abspath(dir_t *dir)
         get_abspath(parent_dir);
 
         if (path[strlen(path) - 1] != '/')
-            strcat(path, "/");
-        strncat(path, get_dirname(dir), FNAME_LENGTH);
+            strlcat(path, "/", PATH_LENGTH);
+        strlcat(path, get_dirname(dir), PATH_LENGTH);
 
         if (parent_dir)
             free(parent_dir);
@@ -147,9 +147,10 @@ int parse_path(const char *path, dir_t *dir)
 {
     int retval = -1;
 
-    if (strnlen(path, PATH_LENGTH) < 1)
+    if (!strnlen(path, PATH_LENGTH))
     {
-        report_error("Invalid path length");
+        memcpy(dir, cur_dir, sizeof(blk_t));
+        return 0;
     }
 
     dir_t *tmp = malloc(sizeof(blk_t));
@@ -168,7 +169,7 @@ int parse_path(const char *path, dir_t *dir)
     }
 
     char buffer[PATH_LENGTH] = {0};
-    strncpy(buffer, path, PATH_LENGTH);
+    strlcpy(buffer, path, PATH_LENGTH);
 
     char *sub, *rest = buffer;
 
@@ -241,4 +242,19 @@ out:
     if (tmp)
         free(tmp);
     return retval;
+}
+
+int split_path(const char *path, char *head, char *tail)
+{
+    int i = strlen(path) - 1;
+    while (path[i] != '/')
+    {
+        if (--i < 0)
+            break;
+    }
+
+    strlcpy(head, path, i + 1);
+    strlcpy(tail, path + i + 1, strlen(path) - i);
+
+    return 0;
 }
