@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <sys/types.h>
+#include <fcntl.h>
 #include <time.h>
 
 extern int fd;
@@ -66,11 +67,20 @@ typedef struct opened_file
     fcb_t fcb;
     bid_t at_bid;
     int fcb_id;
-    off_t off; // offset
+    off_t off;     // offset
+    uint8_t oflag; // support: read write create
     bool is_fcb_modified;
 } of_t;
 #define MAX_FD 0x0F
 #define check_opened_fd(x) ((x) >= 0 && (x) <= MAX_FD)
+#define RD_MASK 0b1u
+#define WR_MASK 0b10u
+#define RW_MASK (RD_MASK | WR_MASK)
+#define CR_MASK 0b100u
+#define check_read(x) ((x)&RD_MASK)
+#define check_write(x) ((x)&WR_MASK)
+#define check_create(x) ((x)&CR_MASK)
+#define check_oflag(x) (RD_MASK <= (x) && (x) <= (RW_MASK | CR_MASK))
 extern of_t ofs[MAX_FD];
 
 typedef struct directory
@@ -97,10 +107,11 @@ int fs_writeto(const char *filename);
 int fs_mkdir(const char *path);
 int fs_rmdir(const char *path);
 int fs_ls();
+int fs_lsof();
 int fs_stat();
 int fs_cd(const char *path);
 int fs_create(const char *path);
-int fs_open(const char *path);
+int fs_open(const char *path, int);
 int fs_close(int);
 #ifndef SEEK_SET
 #define SEEK_SET 0 /* set file offset to offset */
@@ -111,9 +122,9 @@ int fs_close(int);
 #ifndef SEEK_END
 #define SEEK_END 2 /* set file offset to EOF plus offset */
 #endif
-int fs_seek(int, int, int);
-int fs_write(int, const char *, size_t);
-int fs_read(int, const char *, size_t);
+off_t fs_seek(int, off_t, int);
+ssize_t fs_write(int, const char *, size_t);
+ssize_t fs_read(int, const char *, size_t);
 int fs_rm(const char *path);
 int fs_rename(const char *old, const char *new);
 int fs_exit();

@@ -68,10 +68,19 @@ void sh_append(const char *);
 void sh_cpi(const char *, const char *);
 void sh_cpo(const char *, const char *);
 
+void sh_open(const char *);
+void sh_read(int);
+void sh_write(int);
+void sh_close(int);
+
 void sh_init();
 void sh_exit();
 void sh_clear();
 void sh_promot();
+
+int parse_args();
+int read_input();
+int read_input_to_fs(int);
 
 struct cmd_t
 {
@@ -82,6 +91,7 @@ struct cmd_t
 #define TYPE_ARG0 0
 #define TYPE_ARG1 1
 #define TYPE_ARG2 2
+#define TYPE_ARG1_INT 10
 #define TYPE_EXIT -1
     int type;
 };
@@ -95,6 +105,7 @@ struct cmd_t cmd_map[] = {
     {"rmdir", "remove directory", (void (*)())fs_rmdir, true, TYPE_ARG1},
     {"stat", "show stat of disk", (void (*)())fs_stat, true, TYPE_ARG0},
     {"ls", "list directory contents", (void (*)())fs_ls, true, TYPE_ARG0},
+    {"lsof", "list opened file descriptors", (void (*)())fs_lsof, true, TYPE_ARG0},
     {"cd", "change directory", (void (*)())fs_cd, true, TYPE_ARG1},
     {"pwd", "return working directory name", (void (*)())sh_pwd, true, TYPE_ARG0},
     {"touch", "create file", (void (*)())fs_create, true, TYPE_ARG1},
@@ -103,10 +114,10 @@ struct cmd_t cmd_map[] = {
     {"cpi", "copy local file to x3fs", (void (*)())sh_cpi, true, TYPE_ARG2},
     {"cpo", "copy x3fs file to local", (void (*)())sh_cpo, true, TYPE_ARG2},
     // {"create", "", (void (*)())fs_create, 1},
-    // {"open", "open file", (void (*)())fs_open, true, TYPE_ARG1},
-    // {"close", "close file via fd", (void (*)())fs_close, true, 10},
-    // {"write", "write file via fd", (void (*)())fs_write, true, 10},
-    // {"read", "read file via fd", (void (*)())fs_read, true, 10},
+    {"open", "return opened file descriptor", (void (*)())sh_open, true, TYPE_ARG1},
+    {"close", "close file via fd", (void (*)())sh_close, true, TYPE_ARG1_INT},
+    {"write", "write to file from offset via fd", (void (*)())sh_write, true, TYPE_ARG1_INT},
+    {"read", "read nbytes from offset via fd", (void (*)())sh_read, true, TYPE_ARG1_INT},
     {"rm", "remove file", (void (*)())fs_rm, true, TYPE_ARG1},
     {"rename", "rename file or directory", (void (*)())fs_rename, true, TYPE_ARG2},
     // {"quit", "alias to exit", (void (*)())sh_exit, false, TYPE_EXIT},

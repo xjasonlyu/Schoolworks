@@ -183,6 +183,22 @@ int fs_ls()
     return 0;
 }
 
+/* lsof */
+int fs_lsof()
+{
+    printf("FD\tFilename\tOffset\tBID\tMode\tModified\n");
+    for (int i = 0; i < MAX_FD; ++i)
+    {
+        if (ofs[i].not_empty)
+        {
+            printf("%d\t%-9s\t%lld\t%u\t%-4u\t%-8s\n", i, ofs[i].fcb.fname, ofs[i].off,
+                   ofs[i].at_bid, ofs[i].oflag, (ofs[i].is_fcb_modified ? "true" : "false"));
+        }
+    }
+
+    return 0;
+}
+
 /*
     stat
 */
@@ -316,23 +332,30 @@ out:
 }
 
 /*
-    open filename
+    open filename oflag
 */
-int fs_open(const char *path)
+int fs_open(const char *filename, int oflag)
 {
     int retval = -1; /* opened fd */
 
-    if (!check_filename_length(path))
+    if (!check_filename_length(filename))
     {
         report_error("Filename too long");
     }
 
+    if (!check_oflag(oflag))
+    {
+        report_error("Open flag invalid");
+    }
+
     bool found = false;
+    int available_fd = -1;
+find:
     for (int i = 0; i < cur_dir->item_num; ++i)
     {
         if (fcb_exist(&cur_dir->fcb[i]))
         {
-            if (!strncmp(cur_dir->fcb[i].fname, path, FNAME_LENGTH))
+            if (!strncmp(cur_dir->fcb[i].fname, filename, FNAME_LENGTH))
             {
                 found = true;
                 if (fcb_isdir(&cur_dir->fcb[i]))
@@ -344,7 +367,7 @@ int fs_open(const char *path)
                 {
                     if (ofs[index].not_empty)
                     {
-                        if (!strncmp(ofs[index].fcb.fname, path, FNAME_LENGTH))
+                        if (!strncmp(ofs[index].fcb.fname, filename, FNAME_LENGTH))
                         {
                             // retval = index;
                             // goto out;
@@ -353,8 +376,7 @@ int fs_open(const char *path)
                     }
                 }
 
-                int available_fd = find_available_fd();
-                if (available_fd < 0)
+                if ((available_fd = find_available_fd()) < 0)
                 {
                     report_error("Too many opened files");
                 }
@@ -363,6 +385,7 @@ int fs_open(const char *path)
                 ofs[available_fd].at_bid = cur_dir->bid;
                 ofs[available_fd].fcb_id = i;
                 ofs[available_fd].off = 0;
+                ofs[available_fd].oflag = oflag;
                 ofs[available_fd].is_fcb_modified = false;
                 retval = available_fd;
                 break;
@@ -376,7 +399,15 @@ int fs_open(const char *path)
 
     if (!found)
     {
-        report_error("File not found");
+        if (check_create(oflag))
+        {
+            if (!fs_create(filename))
+                goto find;
+        }
+        else
+        {
+            report_error("File not found");
+        }
     }
 
 out:
@@ -384,11 +415,11 @@ out:
 }
 
 /*
-    seek fd offset type
+    seek fd offset whence
 */
-int fs_seek(int target_fd, int offset, int type)
+off_t fs_seek(int target_fd, off_t offset, int whence)
 {
-    int retval = -1;
+    off_t retval = -1;
 
     // fd validation check
     if (!check_opened_fd(target_fd))
@@ -402,7 +433,7 @@ int fs_seek(int target_fd, int offset, int type)
         report_error("Illegal fd");
     }
 
-    switch (type)
+    switch (whence)
     {
     case SEEK_SET:
         ofs[target_fd].off = offset;
@@ -414,10 +445,10 @@ int fs_seek(int target_fd, int offset, int type)
         ofs[target_fd].off = ofs[target_fd].fcb.size + offset;
         break;
     default:
-        break;
+        goto out;
     }
 
-    retval = 0;
+    retval = ofs[target_fd].off;
 
 out:
     return retval;
@@ -470,9 +501,9 @@ out:
 /*
     write fd buf size
 */
-int fs_write(int target_fd, const char *buf, size_t size)
+ssize_t fs_write(int target_fd, const char *buf, size_t size)
 {
-    int retval = -1;
+    ssize_t retval = -1;
 
     if (!check_opened_fd(target_fd))
     {
@@ -482,6 +513,11 @@ int fs_write(int target_fd, const char *buf, size_t size)
     if (!ofs[target_fd].not_empty)
     {
         report_error("Illegal fd");
+    }
+
+    if (!check_write(ofs[target_fd].oflag))
+    {
+        report_error("Not writable");
     }
 
     if (!size)
@@ -535,8 +571,8 @@ int fs_write(int target_fd, const char *buf, size_t size)
 
     //  ofs[target_fd].fcb.size = 0;
 
-    int written = 0;
-    int count = size;
+    size_t count = size;
+    ssize_t written = 0;
     char *pbuf = (char *)buf;
 
     while (1)
@@ -591,9 +627,9 @@ out:
 /*
     read fd buf size
 */
-int fs_read(int target_fd, const char *buf, size_t size)
+ssize_t fs_read(int target_fd, const char *buf, size_t size)
 {
-    int retval = -1;
+    ssize_t retval = -1;
 
     if (!check_opened_fd(target_fd))
     {
@@ -605,6 +641,11 @@ int fs_read(int target_fd, const char *buf, size_t size)
         report_error("Illegal fd");
     }
 
+    if (!check_read(ofs[target_fd].oflag))
+    {
+        report_error("Not readable");
+    }
+
     if (!size || !ofs[target_fd].fcb.size)
     {
         // file empty
@@ -614,7 +655,7 @@ int fs_read(int target_fd, const char *buf, size_t size)
     // if (size > ofs[target_fd].fcb.size)
     //     size = ofs[target_fd].fcb.size;
 
-    int count = min(size, ofs[target_fd].fcb.size - ofs[target_fd].off);
+    size_t count = min(size, ofs[target_fd].fcb.size - ofs[target_fd].off);
 
     bid_t bid = ofs[target_fd].fcb.bid;
     off_t off = ofs[target_fd].off;
@@ -624,8 +665,8 @@ int fs_read(int target_fd, const char *buf, size_t size)
         off -= BLOCK_SIZE;
     }
 
-    int n = 0;
-    int written = 0;
+    size_t n = 0;
+    ssize_t written = 0;
     char *pbuf = (char *)buf;
 
     while (ofs[target_fd].off < ofs[target_fd].fcb.size)

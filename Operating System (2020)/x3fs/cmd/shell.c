@@ -15,25 +15,7 @@ char buf[BUFSIZE] = {0};
 
 bool mounted = false;
 
-int read_input(void)
-{
-    int retval = -1;
-    char *pbuf = buf;
-
-    memset(buf, 0, sizeof(buf));
-
-    retval = read(STDIN_FILENO, buf, BUFSIZE - 1);
-
-    if (retval == 0)
-        // exit(EXIT_SUCCESS);
-        exit_shell();
-
-    if (retval < 0)
-        errorf("parse argument failed: %s", strerror(-retval));
-    return retval;
-}
-
-int parse_args(void)
+int parse_args()
 {
     char *pbuf = buf;
     char **pargv = argv;
@@ -52,6 +34,37 @@ int parse_args(void)
     *pargv = NULL; /* mark the end of argument list */
 
     return (argc = pargv - argv);
+}
+
+int read_input()
+{
+    int retval = -1;
+    char *pbuf = buf;
+
+    memset(buf, 0, sizeof(buf));
+
+    retval = read(STDIN_FILENO, buf, BUFSIZE - 1);
+
+    if (retval < 0)
+        errorf("read input failed: %s", strerror(-retval));
+
+    return retval;
+}
+
+int read_input_to_fs(int _fd)
+{
+    char buffer[0x100] = {0};
+
+    ssize_t n = 0;
+    while ((n = read(STDIN_FILENO, buffer, 0xFF)) > 0)
+    {
+        if (fs_write(_fd, buffer, n) < 0)
+        {
+            break;
+        }
+    }
+
+    return 0;
 }
 
 void sh_init()
@@ -118,29 +131,22 @@ void sh_umount()
 
 void sh_cat(const char *filename)
 {
-    int _fd = fs_open(filename);
+    int _fd = fs_open(filename, RD_MASK);
     if (_fd < 0)
     {
         // errorf( "cannot open %s", filename);
         return;
     }
 
-    int n = 0;
-    int size = ofs[_fd].fcb.size;
+    ssize_t n = 0;
     char *b = malloc(BLOCK_SIZE);
 
-    while (size > 0)
+    while ((n = fs_read(_fd, b, BLOCK_SIZE)) > 0)
     {
-        if ((n = fs_read(_fd, b, BLOCK_SIZE)) < 0)
-        {
-            // errorf( "read error");
-            break;
-        }
         if (write(STDOUT_FILENO, b, n) < 0)
         {
             break;
         }
-        size -= BLOCK_SIZE;
     }
 
     free(b);
@@ -149,7 +155,7 @@ void sh_cat(const char *filename)
 
 void sh_append(const char *filename)
 {
-    int _fd = fs_open(filename);
+    int _fd = fs_open(filename, WR_MASK);
     if (_fd < 0)
     {
         // errorf("cannot open %s", filename);
@@ -157,17 +163,11 @@ void sh_append(const char *filename)
     }
 
     // seek to end
-    fs_seek(_fd, 0, SEEK_END);
-
-    int n = 0;
-    char buffer[0x100] = {0};
-    while ((n = read(STDIN_FILENO, buffer, 0xFF)) > 0)
+    if (fs_seek(_fd, 0, SEEK_END) < 0)
     {
-        if (fs_write(_fd, buffer, n) < 0)
-        {
-            break;
-        }
+        return;
     }
+    read_input_to_fs(_fd);
 
     fs_close(_fd);
 }
@@ -188,7 +188,7 @@ void sh_cpi(const char *src, const char *dst)
         return;
     }
 
-    int dst_fd = fs_open(dst);
+    int dst_fd = fs_open(dst, WR_MASK);
     if (dst_fd < 0)
     {
         // errorf("cannot open %s", dst);
@@ -197,7 +197,7 @@ void sh_cpi(const char *src, const char *dst)
     }
 
     void *b = malloc(BLOCK_SIZE);
-    int n = 0;
+    ssize_t n = 0;
     while ((n = read(src_fd, b, BLOCK_SIZE)) > 0)
     {
         if (fs_write(dst_fd, b, n) < 0)
@@ -219,7 +219,7 @@ void sh_cpo(const char *src, const char *dst)
         return;
     }
 
-    int src_fd = fs_open(src);
+    int src_fd = fs_open(src, RD_MASK);
     if (src_fd < 0)
     {
         // errorf("cannot open %s", src);
@@ -236,7 +236,7 @@ void sh_cpo(const char *src, const char *dst)
     }
 
     void *b = malloc(BLOCK_SIZE);
-    int n = 0;
+    ssize_t n = 0;
     while ((n = fs_read(src_fd, b, BLOCK_SIZE)) > 0)
     {
         if (write(dst_fd, b, n) < 0)
@@ -250,6 +250,76 @@ void sh_cpo(const char *src, const char *dst)
     fs_close(src_fd);
 }
 
+void sh_open(const char *filename)
+{
+    int mode = 0;
+    printf("[open mode]> ");
+    scanf("%d", &mode);
+
+    int _fd = fs_open(filename, mode);
+    if (_fd < 0)
+    {
+        // errorf("cannot open %s", src);
+        return;
+    }
+
+    printf("%s: opened fd: %d\n", filename, _fd);
+}
+
+void sh_read(int _fd)
+{
+    off_t offset = 0;
+    ssize_t size = 0;
+    char buffer[0xFF] = {0};
+
+    printf("[offset] [nbytes]> ");
+    scanf("%lld %lu", &offset, &size);
+
+    if (fs_seek(_fd, offset, SEEK_SET) < 0)
+    {
+        return;
+    }
+
+    ssize_t n = 0;
+    while (size > 0)
+    {
+        if ((n = fs_read(_fd, buffer, min(size, 0xFF))) <= 0)
+        {
+            break;
+        }
+        if (write(STDOUT_FILENO, buffer, n) < 0)
+        {
+            break;
+        }
+        size -= n;
+    }
+}
+
+void sh_write(int _fd)
+{
+    off_t offset = 0;
+
+    printf("[offset]> ");
+    scanf("%lld", &offset);
+
+    if (fs_seek(_fd, offset, SEEK_SET) < 0)
+    {
+        return;
+    }
+
+    read_input_to_fs(_fd);
+}
+
+void sh_close(int _fd)
+{
+    if (fs_close(_fd) < 0)
+    {
+        return;
+    }
+
+    printf("%d: fd closed\n", _fd);
+}
+
 void sh_exit()
 {
     exit_shell();
@@ -257,8 +327,6 @@ void sh_exit()
 
 int main()
 {
-    int retval = -1;
-
     setvbuf(stdout, NULL, _IONBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
 
@@ -271,8 +339,8 @@ int main()
     {
         sh_promot();
 
-        if ((retval = read_input()) < 0)
-            goto out;
+        if (read_input() <= 0)
+            goto exit;
 
         if (!parse_args())
             continue;
@@ -299,7 +367,7 @@ int main()
                     check_protected_cmd(cmd_map[i]);
                     ((int (*)(char *, ...))(cmd_map[i].func))(argv[1], argv[2]);
                     break;
-                case 10:
+                case TYPE_ARG1_INT:
                     check_arg_length(2);
                     check_protected_cmd(cmd_map[i]);
                     ((int (*)(int, ...))(cmd_map[i].func))(atoi(argv[1]));
@@ -319,6 +387,6 @@ int main()
         }
     }
 
-out:
-    return retval;
+exit:
+    sh_exit();
 }
