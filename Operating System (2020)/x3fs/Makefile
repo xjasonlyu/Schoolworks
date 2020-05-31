@@ -15,8 +15,5 @@ x3fs:
 mkx3fs:
 	mkdir -p $(bin) && gcc -o $(bin)/$(mkx3fs) -I$(src) $(cmd)/mkx3fs.c
 
-test:
-	$(bin)/$(mkx3fs) test.img 12M
-
 clean:
 	rm -rf $(bin)
