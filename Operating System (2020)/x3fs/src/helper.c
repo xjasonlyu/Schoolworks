@@ -184,16 +184,21 @@ int parse_path(const char *path, dir_t *dir)
 
         bool found = false;
 
-        if (!strncmp(sub, "..", FNAME_LENGTH)) /* parent dir */
+        if (!strncmp(sub, ".", FNAME_LENGTH)) /* self dir */
+        {
+            found = true;
+            // pread(fd, tmp, sizeof(blk_t), offset_of(tmp->bid));
+        }
+        else if (!strncmp(sub, "..", FNAME_LENGTH)) /* parent dir */
         {
             found = true;
             pread(fd, tmp, sizeof(blk_t), offset_of(tmp->parent_bid));
         }
-        else if (!strncmp(sub, "/", FNAME_LENGTH)) /* root dir */
-        {
-            found = true;
-            pread(fd, tmp, sizeof(blk_t), offset_of(root_bid));
-        }
+        // else if (!strncmp(sub, "/", FNAME_LENGTH)) /* root dir */
+        // {
+        //     found = true;
+        //     pread(fd, tmp, sizeof(blk_t), offset_of(root_bid));
+        // }
         else /* sub dir */
         {
             for (int i = 0; i < tmp->item_num; ++i)
