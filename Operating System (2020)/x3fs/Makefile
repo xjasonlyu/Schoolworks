@@ -1,18 +1,22 @@
-dir := bin
+bin := bin
+cmd := cmd
 src := src
 
-bin  := x3fs
-tool := mkx3fs
+x3fs  := x3fs
+mkx3fs := mkx3fs
 
 objects := $(wildcard $(src)/*.c)
 
 all: x3fs mkx3fs
 
 x3fs:
-	mkdir -p $(dir) && gcc -o $(dir)/$(bin) -I$(src) $(objects) shell.c
+	mkdir -p $(bin) && gcc -o $(bin)/$(x3fs) -I$(src) $(objects) $(cmd)/shell.c
 
 mkx3fs:
-	mkdir -p $(dir) && gcc -o $(dir)/$(tool) -I$(src) mkx3fs.c
+	mkdir -p $(bin) && gcc -o $(bin)/$(mkx3fs) -I$(src) $(cmd)/mkx3fs.c
+
+test:
+	$(bin)/$(mkx3fs) test.img 12M
 
 clean:
-	rm -rf $(dir)
+	rm -rf $(bin)
