@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <time.h>
 
 #include "fs.h"
 
@@ -114,6 +115,23 @@ int main(int argc, char *argv[])
     root_dir->item_num = 0;
     root_dir->bid = sb->data_start_bid - 1; // usually is 3
     root_dir->parent_bid = sb->data_start_bid - 1;
+    // .
+    strcpy(root_dir->fcb[0].fname, ".");
+    root_dir->fcb[0].size = 0;
+    root_dir->fcb[0].bid = root_dir->bid;
+    root_dir->fcb[0].attrs = EXIST_MASK | DIR_MASK;
+    root_dir->fcb[0].created_time = time(NULL);
+    root_dir->fcb[0].modified_time = root_dir->fcb[0].created_time;
+    root_dir->item_num++;
+    // ..
+    strcpy(root_dir->fcb[1].fname, "..");
+    root_dir->fcb[1].size = 0;
+    root_dir->fcb[1].bid = root_dir->parent_bid;
+    root_dir->fcb[1].attrs = EXIST_MASK | DIR_MASK;
+    root_dir->fcb[1].created_time = time(NULL);
+    root_dir->fcb[1].modified_time = root_dir->fcb[0].created_time;
+    root_dir->item_num++;
+
     write(fd, root_dir, sizeof(blk_t));
     puts("root directory ok");
 

@@ -19,11 +19,6 @@ int fs_mkdir(const char *path)
         report_error("Invalid filename");
     }
 
-    if (!strcmp(f, ".."))
-    {
-        report_error("Filename cannot be `..`");
-    }
-
     if (parse_path(p, tmp_dir) < 0)
         goto out;
 
@@ -68,6 +63,22 @@ int fs_mkdir(const char *path)
     new_dir->item_num = 0;
     new_dir->bid = bid;
     new_dir->parent_bid = tmp_dir->bid;
+    // .
+    strcpy(new_dir->fcb[0].fname, ".");
+    new_dir->fcb[0].size = 0;
+    new_dir->fcb[0].bid = new_dir->bid;
+    new_dir->fcb[0].attrs = EXIST_MASK | DIR_MASK;
+    new_dir->fcb[0].created_time = time(NULL);
+    new_dir->fcb[0].modified_time = new_dir->fcb[0].created_time;
+    new_dir->item_num++;
+    // ..
+    strcpy(new_dir->fcb[1].fname, "..");
+    new_dir->fcb[1].size = 0;
+    new_dir->fcb[1].bid = new_dir->parent_bid;
+    new_dir->fcb[1].attrs = EXIST_MASK | DIR_MASK;
+    new_dir->fcb[1].created_time = time(NULL);
+    new_dir->fcb[1].modified_time = new_dir->fcb[1].created_time;
+    new_dir->item_num++;
     // write new dir block to image file
     pwrite(fd, new_dir, sizeof(blk_t), offset_of(bid));
     free(new_dir);
@@ -93,6 +104,11 @@ int fs_rmdir(const char *path)
     if (!check_filename(f))
     {
         report_error("Invalid filename");
+    }
+
+    if (!strcmp(f, ".") || !strcmp(f, ".."))
+    {
+        report_error("Invalid argument");
     }
 
     if (parse_path(p, tmp_dir) < 0)
@@ -824,6 +840,8 @@ int fs_rename(const char *path, const char *newname)
 
     // rename
     strlcpy(tmp_dir->fcb[index].fname, newname, FNAME_LENGTH + 1);
+    // update time
+    tmp_dir->fcb[index].modified_time = time(NULL);
 
     pwrite(fd, tmp_dir, sizeof(blk_t), offset_of(tmp_dir->bid));
     update_cur_dir(tmp_dir);

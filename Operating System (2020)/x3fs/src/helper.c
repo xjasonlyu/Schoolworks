@@ -197,48 +197,30 @@ int parse_path(const char *path, dir_t *dir)
 
         bool found = false;
 
-        if (!strncmp(sub, ".", FNAME_LENGTH)) /* self dir */
+        for (int i = 0; i < tmp->item_num; ++i)
         {
-            found = true;
-            // pread(fd, tmp, sizeof(blk_t), offset_of(tmp->bid));
-        }
-        else if (!strncmp(sub, "..", FNAME_LENGTH)) /* parent dir */
-        {
-            found = true;
-            pread(fd, tmp, sizeof(blk_t), offset_of(tmp->parent_bid));
-        }
-        // else if (!strncmp(sub, "/", FNAME_LENGTH)) /* root dir */
-        // {
-        //     found = true;
-        //     pread(fd, tmp, sizeof(blk_t), offset_of(root_bid));
-        // }
-        else /* sub dir */
-        {
-            for (int i = 0; i < tmp->item_num; ++i)
+            if (fcb_exist(&tmp->fcb[i]))
             {
-                if (fcb_exist(&tmp->fcb[i]))
+                if (!strncmp(tmp->fcb[i].fname, sub, FNAME_LENGTH))
                 {
-                    if (!strncmp(tmp->fcb[i].fname, sub, FNAME_LENGTH))
+                    found = true;
+                    if (fcb_isfile(&tmp->fcb[i]))
                     {
-                        found = true;
-                        if (fcb_isfile(&tmp->fcb[i]))
-                        {
-                            free(tmp);
-                            report_error("Not a directory");
-                        }
-                        pread(fd, tmp, sizeof(blk_t), offset_of(tmp->fcb[i].bid));
-                        if (!dir_check_magic(tmp))
-                        {
-                            free(tmp);
-                            report_error("Magic number of directory didn't match");
-                        }
-                        break;
+                        free(tmp);
+                        report_error("Not a directory");
                     }
-                }
-                else
-                {
+                    pread(fd, tmp, sizeof(blk_t), offset_of(tmp->fcb[i].bid));
+                    if (!dir_check_magic(tmp))
+                    {
+                        free(tmp);
+                        report_error("Magic number of directory didn't match");
+                    }
                     break;
                 }
+            }
+            else
+            {
+                break;
             }
         }
 
