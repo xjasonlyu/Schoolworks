@@ -58,8 +58,6 @@ char *get_dirname(dir_t *dir)
 {
     static char name[FNAME_LENGTH + 1] = {0};
 
-    // memset(name, 0, FNAME_LENGTH);
-
     if (dir->bid == root_bid)
     {
         // root dir
@@ -68,6 +66,11 @@ char *get_dirname(dir_t *dir)
     else
     {
         dir_t *parent_dir = (dir_t *)malloc(sizeof(blk_t));
+        if (!parent_dir)
+        {
+            memset(name, 0, FNAME_LENGTH + 1);
+            return name;
+        }
         pread(fd, parent_dir, sizeof(blk_t), offset_of(dir->parent_bid));
         for (int i = 0; i < parent_dir->item_num; ++i)
         {
@@ -78,8 +81,7 @@ char *get_dirname(dir_t *dir)
             }
         }
 
-        if (parent_dir)
-            free(parent_dir);
+        free(parent_dir);
     }
 
     return name;
@@ -98,6 +100,11 @@ char *get_abspath(dir_t *dir)
     else
     {
         dir_t *parent_dir = (dir_t *)malloc(sizeof(blk_t));
+        if (!parent_dir)
+        {
+            memset(path, 0, PATH_LENGTH);
+            return path;
+        }
         pread(fd, parent_dir, sizeof(blk_t), offset_of(dir->parent_bid));
 
         // recursive get
@@ -107,8 +114,7 @@ char *get_abspath(dir_t *dir)
             strlcat(path, "/", PATH_LENGTH);
         strlcat(path, get_dirname(dir), PATH_LENGTH);
 
-        if (parent_dir)
-            free(parent_dir);
+        free(parent_dir);
     }
 
     return path;
@@ -147,16 +153,21 @@ int parse_path(const char *path, dir_t *dir)
 {
     int retval = -1;
 
+    if (!check_path_length(path))
+    {
+        report_error("Pathname too long");
+    }
+
     if (!strnlen(path, PATH_LENGTH))
     {
         memcpy(dir, cur_dir, sizeof(blk_t));
         return 0;
     }
 
-    dir_t *tmp = malloc(sizeof(blk_t));
+    dir_t *tmp = calloc(1, sizeof(blk_t));
     if (!tmp)
     {
-        report_error("malloc error");
+        report_error("calloc error");
     }
 
     if (path[0] != '/') /* not abspath*/
@@ -180,6 +191,7 @@ int parse_path(const char *path, dir_t *dir)
 
         if (!check_filename(sub))
         {
+            free(tmp);
             report_error("Filename invalid");
         }
 
@@ -211,11 +223,13 @@ int parse_path(const char *path, dir_t *dir)
                         found = true;
                         if (fcb_isfile(&tmp->fcb[i]))
                         {
+                            free(tmp);
                             report_error("Not a directory");
                         }
                         pread(fd, tmp, sizeof(blk_t), offset_of(tmp->fcb[i].bid));
                         if (!dir_check_magic(tmp))
                         {
+                            free(tmp);
                             report_error("Magic number of directory didn't match");
                         }
                         break;
@@ -230,31 +244,39 @@ int parse_path(const char *path, dir_t *dir)
 
         if (!found)
         {
+            free(tmp);
             report_error("No such file or directory");
         }
     }
 
     memcpy(dir, tmp, sizeof(blk_t));
+    free(tmp);
 
     retval = 0;
 
 out:
-    if (tmp)
-        free(tmp);
     return retval;
 }
 
-int split_path(const char *path, char *head, char *tail)
+void split_path(const char *path, char **p, char **f)
 {
-    int i = strlen(path) - 1;
-    while (path[i] != '/')
-    {
-        if (--i < 0)
-            break;
-    }
+    static char head[PATH_LENGTH];
+    static char tail[FNAME_LENGTH + 1];
 
-    strlcpy(head, path, i + 1);
-    strlcpy(tail, path + i + 1, strlen(path) - i);
+    memset(head, 0, PATH_LENGTH);
+    memset(tail, 0, FNAME_LENGTH + 1);
 
-    return 0;
+    int i = strlen(path);
+    if (!i)
+        goto out;
+
+    while (i >= 0 && path[i] != '/')
+        i--;
+
+    strlcpy(head, path, min(i + 2, PATH_LENGTH));
+    strlcpy(tail, path + i + 1, FNAME_LENGTH + 1);
+
+out:
+    *p = head;
+    *f = tail;
 }

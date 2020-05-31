@@ -91,7 +91,8 @@ struct cmd_t
 #define TYPE_ARG0 0
 #define TYPE_ARG1 1
 #define TYPE_ARG2 2
-#define TYPE_ARG1_INT 10
+#define TYPE_ARG1_2 10
+#define TYPE_ARG1_INT 20
 #define TYPE_EXIT -1
     int type;
 };
@@ -104,9 +105,9 @@ struct cmd_t cmd_map[] = {
     {"mkdir", "make directory", (void (*)())fs_mkdir, true, TYPE_ARG1},
     {"rmdir", "remove directory", (void (*)())fs_rmdir, true, TYPE_ARG1},
     {"stat", "show stat of disk", (void (*)())fs_stat, true, TYPE_ARG0},
-    {"ls", "list directory contents", (void (*)())fs_ls, true, TYPE_ARG0},
+    {"ls", "list directory contents", (void (*)())fs_ls, true, TYPE_ARG1_2},
     {"lsof", "list opened file descriptors", (void (*)())fs_lsof, true, TYPE_ARG0},
-    {"cd", "change directory", (void (*)())fs_cd, true, TYPE_ARG1},
+    {"cd", "change directory", (void (*)())fs_cd, true, TYPE_ARG1_2},
     {"pwd", "return working directory name", (void (*)())sh_pwd, true, TYPE_ARG0},
     {"touch", "create file", (void (*)())fs_create, true, TYPE_ARG1},
     {"cat", "concatenate and print files", (void (*)())sh_cat, true, TYPE_ARG1},

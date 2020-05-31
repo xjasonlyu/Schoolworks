@@ -11,28 +11,34 @@ int fs_mkdir(const char *path)
 {
     int retval = -1;
 
-    if (!check_filename(path))
+    char *p, *f;
+    split_path(path, &p, &f);
+
+    if (!check_filename(f))
     {
-        report_error("Filename invalid");
+        report_error("Invalid filename");
     }
 
-    if (!strcmp(path, ".."))
+    if (!strcmp(f, ".."))
     {
         report_error("Filename cannot be `..`");
     }
 
+    if (parse_path(p, tmp_dir) < 0)
+        goto out;
+
     for (int i = 0; i < sb->fcb_num_per_block; ++i)
     {
-        if (fcb_exist(&cur_dir->fcb[i]))
+        if (fcb_exist(&tmp_dir->fcb[i]))
         {
-            if (!strncmp(cur_dir->fcb[i].fname, path, FNAME_LENGTH))
+            if (!strncmp(tmp_dir->fcb[i].fname, f, FNAME_LENGTH))
             {
                 report_error("File exists");
             }
         }
     }
 
-    if (cur_dir->item_num >= sb->fcb_num_per_block)
+    if (tmp_dir->item_num >= sb->fcb_num_per_block)
     {
         report_error("Current FCB is full, no more item is allowed");
     }
@@ -46,25 +52,27 @@ int fs_mkdir(const char *path)
     fat[bid] = BLK_END;
     sb->free_block_num--;
 
-    fcb_t *fcb = &(cur_dir->fcb)[cur_dir->item_num];
-    strlcpy(fcb->fname, path, FNAME_LENGTH + 1);
+    fcb_t *fcb = &(tmp_dir->fcb)[tmp_dir->item_num];
+    strlcpy(fcb->fname, f, FNAME_LENGTH + 1);
     fcb->size = 0;
     fcb->attrs = EXIST_MASK | DIR_MASK;
     fcb->bid = bid;
     fcb->created_time = time(NULL);
     fcb->modified_time = fcb->created_time;
-    cur_dir->item_num++;
+    tmp_dir->item_num++;
     // update current dir block to image file
-    pwrite(fd, cur_dir, sizeof(blk_t), offset_of(cur_dir->bid));
+    pwrite(fd, tmp_dir, sizeof(blk_t), offset_of(tmp_dir->bid));
 
     dir_t *new_dir = (dir_t *)calloc(1, sizeof(blk_t));
     new_dir->magic = MAGIC_DIR;
     new_dir->item_num = 0;
     new_dir->bid = bid;
-    new_dir->parent_bid = cur_dir->bid;
+    new_dir->parent_bid = tmp_dir->bid;
     // write new dir block to image file
     pwrite(fd, new_dir, sizeof(blk_t), offset_of(bid));
     free(new_dir);
+
+    update_cur_dir(tmp_dir);
 
     retval = 0;
 
@@ -79,31 +87,36 @@ int fs_rmdir(const char *path)
 {
     int retval = -1;
 
-    if (!check_filename(path))
+    char *p, *f;
+    split_path(path, &p, &f);
+
+    if (!check_filename(f))
     {
-        report_error("Filename invalid");
+        report_error("Invalid filename");
     }
+
+    if (parse_path(p, tmp_dir) < 0)
+        goto out;
 
     bool found = false;
     for (int i = 0; i < sb->fcb_num_per_block; ++i)
     {
-        if (fcb_exist(&cur_dir->fcb[i]))
+        if (fcb_exist(&tmp_dir->fcb[i]))
         {
-            if (!strncmp(cur_dir->fcb[i].fname, path, FNAME_LENGTH))
+            if (!strncmp(tmp_dir->fcb[i].fname, f, FNAME_LENGTH))
             {
                 found = true;
 
-                if (fcb_isfile(&cur_dir->fcb[i]))
+                if (fcb_isfile(&tmp_dir->fcb[i]))
                 {
                     /* is file */
-                    // fs_rm(cur_dir->fcb[i].fname);
                     report_error("Not a directory");
                 }
 
                 // check if sub dir empty
                 int item_num = 0;
-                dir_t *sub_dir = malloc(sizeof(blk_t));
-                pread(fd, sub_dir, sizeof(blk_t), offset_of(cur_dir->fcb[i].bid));
+                dir_t *sub_dir = calloc(1, sizeof(blk_t));
+                pread(fd, sub_dir, sizeof(blk_t), offset_of(tmp_dir->fcb[i].bid));
                 item_num = sub_dir->item_num;
                 free(sub_dir);
 
@@ -112,7 +125,7 @@ int fs_rmdir(const char *path)
                     report_error("Directory not empty");
                 }
 
-                bid_t bid, next_bid = cur_dir->fcb[i].bid;
+                bid_t bid, next_bid = tmp_dir->fcb[i].bid;
                 while (next_bid > 1)
                 {
                     bid = next_bid;
@@ -120,18 +133,18 @@ int fs_rmdir(const char *path)
                     fat[bid] = BLK_FREE;
                     sb->free_block_num++;
                 }
-                memset(&cur_dir->fcb[i], 0, sizeof(fcb_t));
+                memset(&tmp_dir->fcb[i], 0, sizeof(fcb_t));
 
                 for (int j = i + 1; j < sb->fcb_num_per_block; ++j)
                 {
-                    if (fcb_exist(&cur_dir->fcb[j]))
+                    if (fcb_exist(&tmp_dir->fcb[j]))
                     {
-                        memcpy(&cur_dir->fcb[j - 1], &cur_dir->fcb[j], sizeof(fcb_t));
-                        memset(&cur_dir->fcb[j], 0, sizeof(fcb_t));
+                        memcpy(&tmp_dir->fcb[j - 1], &tmp_dir->fcb[j], sizeof(fcb_t));
+                        memset(&tmp_dir->fcb[j], 0, sizeof(fcb_t));
                     }
                 }
 
-                cur_dir->item_num--;
+                tmp_dir->item_num--;
             }
         }
         else
@@ -144,12 +157,12 @@ int fs_rmdir(const char *path)
     {
         report_error("No such file or directory");
     }
-    else
-    {
-        pwrite(fd, cur_dir, sizeof(blk_t), offset_of(cur_dir->bid));
-    }
+
+    pwrite(fd, tmp_dir, sizeof(blk_t), offset_of(tmp_dir->bid));
+    update_cur_dir(tmp_dir);
 
     retval = 0;
+
 out:
     return retval;
 }
@@ -157,22 +170,27 @@ out:
 /*
     ls
 */
-int fs_ls()
+int fs_ls(const char *path)
 {
+    int retval = -1;
+
+    if (parse_path(path ? path : "", tmp_dir) < 0)
+        goto out;
+
     char buffer[0x10];
 
-    printf("total %d\n", cur_dir->item_num);
-    for (int i = 0; i < cur_dir->item_num; ++i)
+    printf("total %d\n", tmp_dir->item_num);
+    for (int i = 0; i < tmp_dir->item_num; ++i)
     {
-        if (fcb_exist(&cur_dir->fcb[i]))
+        if (fcb_exist(&tmp_dir->fcb[i]))
         {
-            strftime(buffer, 0x0F, "%b %d %H:%M", localtime(&cur_dir->fcb[i].modified_time));
+            strftime(buffer, 0x0F, "%b %d %H:%M", localtime(&tmp_dir->fcb[i].modified_time));
             printf("%s %6d %7s %13s %-9s\n",
-                   (fcb_isdir(&cur_dir->fcb[i]) ? "d" : "-"),
-                   cur_dir->fcb[i].bid,
-                   format_size(cur_dir->fcb[i].size),
+                   (fcb_isdir(&tmp_dir->fcb[i]) ? "d" : "-"),
+                   tmp_dir->fcb[i].bid,
+                   format_size(tmp_dir->fcb[i].size),
                    buffer,
-                   cur_dir->fcb[i].fname);
+                   tmp_dir->fcb[i].fname);
         }
         else
         {
@@ -180,7 +198,10 @@ int fs_ls()
         }
     }
 
-    return 0;
+    retval = 0;
+
+out:
+    return retval;
 }
 
 /* lsof */
@@ -218,7 +239,7 @@ int fs_stat()
 */
 int fs_cd(const char *path)
 {
-    return parse_path(path, cur_dir);
+    return parse_path(path ? path : "", cur_dir);
 }
 
 /*
@@ -228,17 +249,23 @@ int fs_create(const char *path)
 {
     int retval = -1;
 
-    if (!check_filename(path))
+    char *p, *f;
+    split_path(path, &p, &f);
+
+    if (!check_filename(f))
     {
-        report_error("Filename invalid");
+        report_error("Invalid filename");
     }
 
-    if (!strcmp(path, ".."))
+    if (!strcmp(f, ".."))
     {
         report_error("Filename cannot be `..`");
     }
 
-    if (cur_dir->item_num >= sb->fcb_num_per_block)
+    if (parse_path(p, tmp_dir) < 0)
+        goto out;
+
+    if (tmp_dir->item_num >= sb->fcb_num_per_block)
     {
         report_error("Current FCB is full, no more item is allowed");
     }
@@ -247,9 +274,9 @@ int fs_create(const char *path)
     bool found = false;
     for (int i = 0; i < sb->fcb_num_per_block; ++i)
     {
-        if (fcb_exist(&cur_dir->fcb[i]))
+        if (fcb_exist(&tmp_dir->fcb[i]))
         {
-            if (!strncmp(cur_dir->fcb[i].fname, path, FNAME_LENGTH))
+            if (!strncmp(tmp_dir->fcb[i].fname, f, FNAME_LENGTH))
             {
                 found = true;
                 break;
@@ -261,18 +288,19 @@ int fs_create(const char *path)
         report_error("File exists");
     }
 
-    fcb_t *fcb = &cur_dir->fcb[cur_dir->item_num];
-    strlcpy(fcb->fname, path, FNAME_LENGTH + 1);
+    fcb_t *fcb = &tmp_dir->fcb[tmp_dir->item_num];
+    strlcpy(fcb->fname, f, FNAME_LENGTH + 1);
     fcb->size = 0;
     fcb->bid = 0;
     fcb->attrs = EXIST_MASK;
     fcb->created_time = time(NULL);
     fcb->modified_time = fcb->created_time;
 
-    cur_dir->item_num++;
+    tmp_dir->item_num++;
 
     // save current dir block to image file
-    pwrite(fd, cur_dir, sizeof(blk_t), offset_of(cur_dir->bid));
+    pwrite(fd, tmp_dir, sizeof(blk_t), offset_of(tmp_dir->bid));
+    update_cur_dir(tmp_dir);
 
     retval = 0;
 
@@ -283,31 +311,37 @@ out:
 /*
     open filename oflag
 */
-int fs_open(const char *filename, int oflag)
+int fs_open(const char *path, int oflag)
 {
     int retval = -1; /* opened fd */
-
-    if (!check_filename(filename))
-    {
-        report_error("Filename invalid");
-    }
 
     if (!check_oflag(oflag))
     {
         report_error("Open flag invalid");
     }
 
+    char *p, *f;
+    split_path(path, &p, &f);
+
+    if (!check_filename(f))
+    {
+        report_error("Invalid filename");
+    }
+
+    if (parse_path(p, tmp_dir) < 0)
+        goto out;
+
     bool found = false;
     int available_fd = -1;
 find:
-    for (int i = 0; i < cur_dir->item_num; ++i)
+    for (int i = 0; i < tmp_dir->item_num; ++i)
     {
-        if (fcb_exist(&cur_dir->fcb[i]))
+        if (fcb_exist(&tmp_dir->fcb[i]))
         {
-            if (!strncmp(cur_dir->fcb[i].fname, filename, FNAME_LENGTH))
+            if (!strncmp(tmp_dir->fcb[i].fname, f, FNAME_LENGTH))
             {
                 found = true;
-                if (fcb_isdir(&cur_dir->fcb[i]))
+                if (fcb_isdir(&tmp_dir->fcb[i]))
                 {
                     report_error("Cannot open a directory");
                 }
@@ -316,7 +350,7 @@ find:
                 {
                     if (ofs[index].not_empty)
                     {
-                        if (!strncmp(ofs[index].fcb.fname, filename, FNAME_LENGTH))
+                        if (!strncmp(ofs[index].fcb.fname, f, FNAME_LENGTH))
                         {
                             // retval = index;
                             // goto out;
@@ -329,9 +363,9 @@ find:
                 {
                     report_error("Too many opened files");
                 }
-                memcpy(&ofs[available_fd].fcb, &cur_dir->fcb[i], sizeof(fcb_t));
+                memcpy(&ofs[available_fd].fcb, &tmp_dir->fcb[i], sizeof(fcb_t));
                 ofs[available_fd].not_empty = true;
-                ofs[available_fd].at_bid = cur_dir->bid;
+                ofs[available_fd].at_bid = tmp_dir->bid;
                 ofs[available_fd].fcb_id = i;
                 ofs[available_fd].off = 0;
                 ofs[available_fd].oflag = oflag;
@@ -350,7 +384,7 @@ find:
     {
         if (check_create(oflag))
         {
-            if (!fs_create(filename))
+            if (!fs_create(f))
                 goto find;
         }
         else
@@ -358,6 +392,8 @@ find:
             report_error("File not found");
         }
     }
+
+    update_cur_dir(tmp_dir);
 
 out:
     return retval;
@@ -666,26 +702,32 @@ int fs_rm(const char *path)
 {
     int retval = -1;
 
-    if (!check_filename(path))
+    char *p, *f;
+    split_path(path, &p, &f);
+
+    if (!check_filename(f))
     {
-        report_error("Filename invalid");
+        report_error("Invalid filename");
     }
+
+    if (parse_path(p, tmp_dir) < 0)
+        goto out;
 
     bool found = false;
     for (int i = 0; i < sb->fcb_num_per_block; ++i)
     {
-        if (fcb_exist(&cur_dir->fcb[i]))
+        if (fcb_exist(&tmp_dir->fcb[i]))
         {
-            if (!strncmp(cur_dir->fcb[i].fname, path, FNAME_LENGTH))
+            if (!strncmp(tmp_dir->fcb[i].fname, f, FNAME_LENGTH))
             {
                 found = true;
 
-                if (fcb_isdir(&cur_dir->fcb[i]))
+                if (fcb_isdir(&tmp_dir->fcb[i]))
                 {
                     report_error("Is a directory");
                 }
 
-                fcb_t *fcb = &cur_dir->fcb[i];
+                fcb_t *fcb = &tmp_dir->fcb[i];
                 bid_t bid, next_bid = fcb->bid;
                 while (next_bid > 1)
                 {
@@ -699,14 +741,14 @@ int fs_rm(const char *path)
                 // align fcb array
                 for (int j = i + 1; j < sb->fcb_num_per_block; ++j)
                 {
-                    if (fcb_exist(&cur_dir->fcb[j]))
+                    if (fcb_exist(&tmp_dir->fcb[j]))
                     {
-                        memcpy(&cur_dir->fcb[j - 1], &cur_dir->fcb[j], sizeof(fcb_t));
-                        memset(&cur_dir->fcb[j], 0, sizeof(fcb_t));
+                        memcpy(&tmp_dir->fcb[j - 1], &tmp_dir->fcb[j], sizeof(fcb_t));
+                        memset(&tmp_dir->fcb[j], 0, sizeof(fcb_t));
                     }
                 }
 
-                cur_dir->item_num--;
+                tmp_dir->item_num--;
             }
         }
         else
@@ -720,7 +762,8 @@ int fs_rm(const char *path)
         report_error("No such file or directory");
     }
 
-    pwrite(fd, cur_dir, sizeof(blk_t), offset_of(cur_dir->bid));
+    pwrite(fd, tmp_dir, sizeof(blk_t), offset_of(tmp_dir->bid));
+    update_cur_dir(tmp_dir);
 
     retval = 0;
 
@@ -729,34 +772,40 @@ out:
 }
 
 /*
-    rename old new
+    rename path newname
 */
-int fs_rename(const char *old, const char *new)
+int fs_rename(const char *path, const char *newname)
 {
     int retval = -1;
 
-    if (!check_filename(old))
+    char *p, *f;
+    split_path(path, &p, &f);
+
+    if (!check_filename(f))
     {
-        report_error("Filename invalid");
+        report_error("Invalid filename");
     }
 
-    if (!check_filename(new))
+    if (!check_filename(newname))
     {
-        report_error("Filename invalid");
+        report_error("Invalid filename");
     }
+
+    if (parse_path(p, tmp_dir) < 0)
+        goto out;
 
     int index = -1;
     bool found = false;
     for (int i = 0; i < sb->fcb_num_per_block; ++i)
     {
-        if (fcb_exist(&cur_dir->fcb[i]))
+        if (fcb_exist(&tmp_dir->fcb[i]))
         {
-            if (!strncmp(cur_dir->fcb[i].fname, new, FNAME_LENGTH))
+            if (!strncmp(tmp_dir->fcb[i].fname, newname, FNAME_LENGTH))
             {
                 report_error("File exists");
             }
 
-            if (!strncmp(cur_dir->fcb[i].fname, old, FNAME_LENGTH))
+            if (!strncmp(tmp_dir->fcb[i].fname, f, FNAME_LENGTH))
             {
                 found = true;
                 index = i;
@@ -774,9 +823,10 @@ int fs_rename(const char *old, const char *new)
     }
 
     // rename
-    strlcpy(cur_dir->fcb[index].fname, new, FNAME_LENGTH + 1);
+    strlcpy(tmp_dir->fcb[index].fname, newname, FNAME_LENGTH + 1);
 
-    pwrite(fd, cur_dir, sizeof(blk_t), offset_of(cur_dir->bid));
+    pwrite(fd, tmp_dir, sizeof(blk_t), offset_of(tmp_dir->bid));
+    update_cur_dir(tmp_dir);
 
     retval = 0;
 

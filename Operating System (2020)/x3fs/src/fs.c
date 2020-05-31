@@ -14,6 +14,7 @@ int fd = -1;
 sb_t *sb = NULL;
 bid_t *fat = NULL;
 dir_t *cur_dir = NULL;
+dir_t *tmp_dir = NULL;
 
 of_t ofs[MAX_FD] = {0};
 
@@ -65,12 +66,22 @@ int fs_loadfrom(const char *filename)
         report_error("Magic number of directory didn't match");
     }
 
+    // create tmp buffer
+    tmp_dir = malloc(sizeof(blk_t));
+
 out:
     return retval;
 }
 
 int fs_writeto(const char *filename)
 {
+    // close opened fd
+    for (int i = 0; i < MAX_FD; ++i)
+    {
+        if (ofs[i].not_empty)
+            fs_close(i);
+    }
+
     // set fd offset to zero
     lseek(fd, 0, SEEK_SET);
 
@@ -92,6 +103,7 @@ int fs_writeto(const char *filename)
     free(sb);
     free(fat);
     free(cur_dir);
+    free(tmp_dir);
 
     return 0;
 }

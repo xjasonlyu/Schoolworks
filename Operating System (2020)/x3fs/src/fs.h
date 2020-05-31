@@ -44,8 +44,8 @@ typedef struct superblock
 } sb_t;
 #define sb_check_magic(x) (((sb_t *)x)->magic == MAGIC_SUPERBLOCK)
 
-#define FNAME_LENGTH 0x10
 #define PATH_LENGTH 0xFF
+#define FNAME_LENGTH 0x10
 typedef struct fcb
 {
     char fname[FNAME_LENGTH + 1]; // 17
@@ -55,7 +55,8 @@ typedef struct fcb
     time_t created_time;          // 4
     time_t modified_time;         // 4
 } fcb_t;
-#define check_filename_length(x) (strlen(x) <= FNAME_LENGTH)
+#define check_path_length(x) (strlen(x) <= PATH_LENGTH)
+#define check_filename_length(x) (0 < strlen(x) && strlen(x) <= FNAME_LENGTH)
 #define DIR_MASK 0b10u
 #define EXIST_MASK 0b1u
 #define fcb_isdir(fcb) ((fcb)->attrs & DIR_MASK)
@@ -99,6 +100,14 @@ extern sb_t *sb;
 #define root_bid (1 + 2 * sb->fat_block_num)
 extern bid_t *fat;
 extern dir_t *cur_dir;
+extern dir_t *tmp_dir;
+/* update if it's current dir */
+#define update_cur_dir(x)                        \
+    do                                           \
+    {                                            \
+        if ((x)->bid == cur_dir->bid)            \
+            memcpy(cur_dir, (x), sizeof(blk_t)); \
+    } while (0)
 
 // init fs image
 int fs_loadfrom(const char *filename);
@@ -107,7 +116,7 @@ int fs_writeto(const char *filename);
 // operations
 int fs_mkdir(const char *path);
 int fs_rmdir(const char *path);
-int fs_ls();
+int fs_ls(const char *path);
 int fs_lsof();
 int fs_stat();
 int fs_cd(const char *path);
@@ -138,6 +147,6 @@ char *get_dirname(dir_t *);
 char *get_abspath(dir_t *);
 bool check_filename(const char *);
 int parse_path(const char *, dir_t *);
-int split_path(const char *, char *, char *);
+void split_path(const char *, char **, char **);
 
 #endif

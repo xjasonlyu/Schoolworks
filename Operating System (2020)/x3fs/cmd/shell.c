@@ -367,6 +367,13 @@ int main()
                     check_protected_cmd(cmd_map[i]);
                     ((int (*)(char *, ...))(cmd_map[i].func))(argv[1], argv[2]);
                     break;
+                case TYPE_ARG1_2:
+                    check_protected_cmd(cmd_map[i]);
+                    if (argv[2])
+                        ((int (*)(char *, ...))(cmd_map[i].func))(argv[1], argv[2]);
+                    else
+                        ((int (*)(char *, ...))(cmd_map[i].func))(argv[1]);
+                    break;
                 case TYPE_ARG1_INT:
                     check_arg_length(2);
                     check_protected_cmd(cmd_map[i]);
