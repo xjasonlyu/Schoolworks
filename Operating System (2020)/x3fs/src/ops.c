@@ -149,7 +149,7 @@ int fs_rmdir(const char *path)
                 item_num = sub_dir->item_num;
                 free(sub_dir);
 
-                if (item_num > 0)
+                if (item_num > 2) /* ignore . & .. */
                 {
                     report_error("Directory not empty");
                 }

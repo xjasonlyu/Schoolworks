@@ -28,6 +28,10 @@ extern int fd;
 typedef uint16_t bid_t; // block id
 typedef uint8_t blk_t[BLOCK_SIZE];
 
+#ifdef __linux__
+#define off_t long long int
+#endif
+
 #define offset_of(x) (sizeof(blk_t) * x)
 
 typedef struct superblock
@@ -153,5 +157,10 @@ char *read_symlink(fcb_t *);
 bool check_filename(const char *);
 int parse_path(const char *, dir_t *);
 void split_path(const char *, char **, char **);
+
+#ifdef __linux__
+size_t strlcat(char *,const char *,size_t);
+size_t strlcpy(char *,const char *,size_t);
+#endif
 
 #endif
