@@ -2,7 +2,7 @@
 
 Thanks a lot to oyiadin's [g3fs](https://github.com/oyiadin/Schoolworks/tree/master/Operating%20System%20(2019)/g3fs)
 
-## What's new?
+## What's new
 
 - bug fixes
 - better CLI
@@ -12,6 +12,12 @@ Thanks a lot to oyiadin's [g3fs](https://github.com/oyiadin/Schoolworks/tree/mas
 - lsof support
 - open file in different mode
 - symlink support
+
+## What's missing
+
+- MultiUser
+- Inodes
+- File permissions
 
 ## Summary
 
