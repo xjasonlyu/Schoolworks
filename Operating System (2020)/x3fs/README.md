@@ -11,3 +11,4 @@ Thanks a lot to oyiadin's [g3fs](https://github.com/oyiadin/Schoolworks/tree/mas
 - file rename
 - lsof support
 - open file in different mode
+- symlink support

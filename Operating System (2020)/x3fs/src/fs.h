@@ -11,12 +11,12 @@
 
 extern int fd;
 
-#define report_error(msg, val...)                       \
-    do                                                  \
-    {                                                   \
-        fprintf(stderr, "%s: " msg "\n", __FUNCTION__); \
-        retval = (-1, ##val);                           \
-        goto out;                                       \
+#define report_error(msg, val...)                              \
+    do                                                         \
+    {                                                          \
+        fprintf(stderr, "%s: " msg "\n", __FUNCTION__, ##val); \
+        retval = -1;                                           \
+        goto out;                                              \
     } while (0)
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
@@ -51,14 +51,17 @@ typedef struct fcb
     char fname[FNAME_LENGTH + 1]; // 17
     uint32_t size;                // 4
     bid_t bid;                    // 2
+    bid_t src_bid;                // 2
     uint8_t attrs;                // 1
     time_t created_time;          // 4
     time_t modified_time;         // 4
 } fcb_t;
 #define check_path_length(x) (strlen(x) <= PATH_LENGTH)
 #define check_filename_length(x) (0 < strlen(x) && strlen(x) <= FNAME_LENGTH)
+#define SYMLINK_MASK 0b100u
 #define DIR_MASK 0b10u
 #define EXIST_MASK 0b1u
+#define fcb_symlink(fcb) ((fcb)->attrs & SYMLINK_MASK)
 #define fcb_isdir(fcb) ((fcb)->attrs & DIR_MASK)
 #define fcb_isfile(fcb) (!((fcb)->attrs & DIR_MASK))
 #define fcb_exist(fcb) ((fcb)->attrs & EXIST_MASK)
@@ -136,15 +139,17 @@ off_t fs_seek(int, off_t, int);
 ssize_t fs_write(int, const char *, size_t);
 ssize_t fs_read(int, const char *, size_t);
 int fs_rm(const char *path);
-int fs_rename(const char *old, const char *new);
+int fs_rename(const char *, const char *);
+int fs_symlink(const char *, const char *);
 int fs_exit();
 
 // helper
 bid_t find_free_block();
 int find_available_fd();
+int find_dir_fcb(dir_t *, fcb_t *);
 char *format_size(uint32_t);
-char *get_dirname(dir_t *);
 char *get_abspath(dir_t *);
+char *read_symlink(fcb_t *);
 bool check_filename(const char *);
 int parse_path(const char *, dir_t *);
 void split_path(const char *, char **, char **);

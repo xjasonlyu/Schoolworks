@@ -16,11 +16,13 @@ int fs_mkdir(const char *path)
 
     if (!check_filename(f))
     {
-        report_error("Invalid filename");
+        report_error("%s: Invalid filename", f);
     }
 
     if (parse_path(p, tmp_dir) < 0)
-        goto out;
+    {
+        report_error("%s: Parse path error", p);
+    }
 
     for (int i = 0; i < sb->fcb_num_per_block; ++i)
     {
@@ -52,6 +54,7 @@ int fs_mkdir(const char *path)
     fcb->size = 0;
     fcb->attrs = EXIST_MASK | DIR_MASK;
     fcb->bid = bid;
+    fcb->src_bid = bid;
     fcb->created_time = time(NULL);
     fcb->modified_time = fcb->created_time;
     tmp_dir->item_num++;
@@ -65,19 +68,27 @@ int fs_mkdir(const char *path)
     new_dir->parent_bid = tmp_dir->bid;
     // .
     strcpy(new_dir->fcb[0].fname, ".");
-    new_dir->fcb[0].size = 0;
-    new_dir->fcb[0].bid = new_dir->bid;
-    new_dir->fcb[0].attrs = EXIST_MASK | DIR_MASK;
-    new_dir->fcb[0].created_time = time(NULL);
-    new_dir->fcb[0].modified_time = new_dir->fcb[0].created_time;
+    new_dir->fcb[0].size = fcb->size;
+    new_dir->fcb[0].bid = fcb->bid;
+    new_dir->fcb[0].src_bid = fcb->src_bid;
+    new_dir->fcb[0].attrs = fcb->attrs;
+    new_dir->fcb[0].created_time = fcb->created_time;
+    new_dir->fcb[0].modified_time = fcb->modified_time;
     new_dir->item_num++;
     // ..
+    fcb_t tmp_dir_fcb;
+    if (find_dir_fcb(tmp_dir, &tmp_dir_fcb) < 0)
+    {
+        free(new_dir);
+        goto out;
+    }
     strcpy(new_dir->fcb[1].fname, "..");
-    new_dir->fcb[1].size = 0;
-    new_dir->fcb[1].bid = new_dir->parent_bid;
-    new_dir->fcb[1].attrs = EXIST_MASK | DIR_MASK;
-    new_dir->fcb[1].created_time = time(NULL);
-    new_dir->fcb[1].modified_time = new_dir->fcb[1].created_time;
+    new_dir->fcb[1].size = tmp_dir_fcb.size;
+    new_dir->fcb[1].bid = tmp_dir_fcb.bid;
+    new_dir->fcb[1].src_bid = tmp_dir_fcb.src_bid;
+    new_dir->fcb[1].attrs = tmp_dir_fcb.attrs;
+    new_dir->fcb[1].created_time = tmp_dir_fcb.created_time;
+    new_dir->fcb[1].modified_time = tmp_dir_fcb.modified_time;
     new_dir->item_num++;
     // write new dir block to image file
     pwrite(fd, new_dir, sizeof(blk_t), offset_of(bid));
@@ -103,7 +114,7 @@ int fs_rmdir(const char *path)
 
     if (!check_filename(f))
     {
-        report_error("Invalid filename");
+        report_error("%s: Invalid filename", f);
     }
 
     if (!strcmp(f, ".") || !strcmp(f, ".."))
@@ -112,7 +123,9 @@ int fs_rmdir(const char *path)
     }
 
     if (parse_path(p, tmp_dir) < 0)
-        goto out;
+    {
+        report_error("%s: Parse path error", p);
+    }
 
     bool found = false;
     for (int i = 0; i < sb->fcb_num_per_block; ++i)
@@ -193,6 +206,7 @@ int fs_ls(const char *path)
     if (parse_path(path ? path : "", tmp_dir) < 0)
         goto out;
 
+    char *lnk;
     char buffer[0x10];
 
     printf("total %d\n", tmp_dir->item_num);
@@ -201,12 +215,24 @@ int fs_ls(const char *path)
         if (fcb_exist(&tmp_dir->fcb[i]))
         {
             strftime(buffer, 0x0F, "%b %d %H:%M", localtime(&tmp_dir->fcb[i].modified_time));
-            printf("%s %6d %7s %13s %-9s\n",
-                   (fcb_isdir(&tmp_dir->fcb[i]) ? "d" : "-"),
-                   tmp_dir->fcb[i].bid,
-                   format_size(tmp_dir->fcb[i].size),
-                   buffer,
-                   tmp_dir->fcb[i].fname);
+            if ((lnk = read_symlink(&tmp_dir->fcb[i])))
+            {
+                printf("%sl %6d %6d %7s %13s %s -> %s\n",
+                       (fcb_isdir(&tmp_dir->fcb[i]) ? "d" : "f"),
+                       tmp_dir->fcb[i].bid,
+                       tmp_dir->fcb[i].src_bid,
+                       format_size(tmp_dir->fcb[i].size),
+                       buffer, tmp_dir->fcb[i].fname, lnk);
+            }
+            else
+            {
+                printf("%s- %6d %6d %7s %13s %-9s\n",
+                       (fcb_isdir(&tmp_dir->fcb[i]) ? "d" : "f"),
+                       tmp_dir->fcb[i].bid,
+                       tmp_dir->fcb[i].src_bid,
+                       format_size(tmp_dir->fcb[i].size),
+                       buffer, tmp_dir->fcb[i].fname);
+            }
         }
         else
         {
@@ -270,16 +296,13 @@ int fs_create(const char *path)
 
     if (!check_filename(f))
     {
-        report_error("Invalid filename");
-    }
-
-    if (!strcmp(f, ".."))
-    {
-        report_error("Filename cannot be `..`");
+        report_error("%s: Invalid filename", f);
     }
 
     if (parse_path(p, tmp_dir) < 0)
-        goto out;
+    {
+        report_error("%s: Parse path error", p);
+    }
 
     if (tmp_dir->item_num >= sb->fcb_num_per_block)
     {
@@ -287,27 +310,22 @@ int fs_create(const char *path)
     }
 
     // check if file already existed
-    bool found = false;
     for (int i = 0; i < sb->fcb_num_per_block; ++i)
     {
         if (fcb_exist(&tmp_dir->fcb[i]))
         {
             if (!strncmp(tmp_dir->fcb[i].fname, f, FNAME_LENGTH))
             {
-                found = true;
-                break;
+                report_error("File exists");
             }
         }
-    }
-    if (found)
-    {
-        report_error("File exists");
     }
 
     fcb_t *fcb = &tmp_dir->fcb[tmp_dir->item_num];
     strlcpy(fcb->fname, f, FNAME_LENGTH + 1);
     fcb->size = 0;
     fcb->bid = 0;
+    fcb->src_bid = 0;
     fcb->attrs = EXIST_MASK;
     fcb->created_time = time(NULL);
     fcb->modified_time = fcb->created_time;
@@ -341,13 +359,16 @@ int fs_open(const char *path, int oflag)
 
     if (!check_filename(f))
     {
-        report_error("Invalid filename");
+        report_error("%s: Invalid filename", f);
     }
 
     if (parse_path(p, tmp_dir) < 0)
-        goto out;
+    {
+        report_error("%s: Parse path error", p);
+    }
 
     bool found = false;
+    bool is_symlink = false;
     int available_fd = -1;
 find:
     for (int i = 0; i < tmp_dir->item_num; ++i)
@@ -360,6 +381,24 @@ find:
                 if (fcb_isdir(&tmp_dir->fcb[i]))
                 {
                     report_error("Cannot open a directory");
+                }
+
+                if (fcb_symlink(&tmp_dir->fcb[i]))
+                {
+                    // refind
+                    found = false;
+                    is_symlink = true;
+                    // reload source name
+                    split_path(read_symlink(&tmp_dir->fcb[i]), &p, &f);
+                    // re-parse
+                    if (parse_path(p, tmp_dir) < 0)
+                    {
+                        report_error("%s: Parse path error", p);
+                    }
+                    else
+                    {
+                        goto find;
+                    }
                 }
 
                 for (int index = 0; index < MAX_FD; ++index)
@@ -402,6 +441,10 @@ find:
         {
             if (!fs_create(f))
                 goto find;
+        }
+        else if (is_symlink)
+        {
+            report_error("%s: Symlink file not found", f);
         }
         else
         {
@@ -723,11 +766,13 @@ int fs_rm(const char *path)
 
     if (!check_filename(f))
     {
-        report_error("Invalid filename");
+        report_error("%s: Invalid filename", f);
     }
 
     if (parse_path(p, tmp_dir) < 0)
-        goto out;
+    {
+        report_error("%s: Parse path error", p);
+    }
 
     bool found = false;
     for (int i = 0; i < sb->fcb_num_per_block; ++i)
@@ -799,16 +844,18 @@ int fs_rename(const char *path, const char *newname)
 
     if (!check_filename(f))
     {
-        report_error("Invalid filename");
+        report_error("%s: Invalid filename", f);
     }
 
     if (!check_filename(newname))
     {
-        report_error("Invalid filename");
+        report_error("%s: Invalid filename", newname);
     }
 
     if (parse_path(p, tmp_dir) < 0)
-        goto out;
+    {
+        report_error("%s: Parse path error", p);
+    }
 
     int index = -1;
     bool found = false;
@@ -844,6 +891,110 @@ int fs_rename(const char *path, const char *newname)
     tmp_dir->fcb[index].modified_time = time(NULL);
 
     pwrite(fd, tmp_dir, sizeof(blk_t), offset_of(tmp_dir->bid));
+    update_cur_dir(tmp_dir);
+
+    retval = 0;
+
+out:
+    return retval;
+}
+
+/*
+    symlink src target
+*/
+int fs_symlink(const char *src, const char *target)
+{
+    int retval = -1;
+    int lnk_fd = -1;
+
+    char *p, *f;
+    split_path(src, &p, &f);
+
+    if (!check_filename(f))
+    {
+        report_error("%s: Invalid filename", f);
+    }
+
+    if (parse_path(p, tmp_dir) < 0)
+    {
+        report_error("%s: Parse path error", p);
+    }
+
+    // check source file validation
+    fcb_t src_fcb;
+    bool found = false;
+    for (int i = 0; i < sb->fcb_num_per_block; ++i)
+    {
+        if (fcb_exist(&tmp_dir->fcb[i]))
+        {
+            if (!strncmp(tmp_dir->fcb[i].fname, f, FNAME_LENGTH))
+            {
+                found = true;
+                memcpy(&src_fcb, &tmp_dir->fcb[i], sizeof(fcb_t));
+                break;
+            }
+        }
+    }
+
+    if (!found)
+    {
+        report_error("Src file not found");
+    }
+
+    split_path(target, &p, &f);
+
+    if (!check_filename(f))
+    {
+        report_error("%s: Invalid filename", f);
+    }
+
+    if (parse_path(p, tmp_dir) < 0)
+    {
+        report_error("%s: Parse path error", p);
+    }
+
+    if (tmp_dir->item_num >= sb->fcb_num_per_block)
+    {
+        report_error("Current FCB is full, no more item is allowed");
+    }
+
+    // check if file already existed
+    for (int i = 0; i < sb->fcb_num_per_block; ++i)
+    {
+        if (fcb_exist(&tmp_dir->fcb[i]))
+        {
+            if (!strncmp(tmp_dir->fcb[i].fname, f, FNAME_LENGTH))
+            {
+                report_error("File exists");
+            }
+        }
+    }
+
+    bid_t bid;
+    if ((bid = find_free_block()) == 0)
+    {
+        report_error("No free space");
+    }
+
+    fat[bid] = BLK_END;
+    sb->free_block_num--;
+
+    fcb_t *fcb = &(tmp_dir->fcb)[tmp_dir->item_num];
+    strlcpy(fcb->fname, f, FNAME_LENGTH + 1);
+    fcb->size = 0;
+    fcb->attrs = src_fcb.attrs | SYMLINK_MASK;
+    fcb->bid = bid;
+    fcb->src_bid = src_fcb.bid; // set to source bid
+    fcb->created_time = time(NULL);
+    fcb->modified_time = fcb->created_time;
+    tmp_dir->item_num++;
+
+    // write link source to block
+    fcb->size += pwrite(fd, src, strlen(src) + 1, offset_of(bid));
+
+    // update current dir block to image file
+    pwrite(fd, tmp_dir, sizeof(blk_t), offset_of(tmp_dir->bid));
+
     update_cur_dir(tmp_dir);
 
     retval = 0;

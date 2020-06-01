@@ -259,7 +259,7 @@ void sh_open(const char *filename)
     int _fd = fs_open(filename, mode);
     if (_fd < 0)
     {
-        // errorf("cannot open %s", src);
+        // errorf("cannot open %s", filename);
         return;
     }
 

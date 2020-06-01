@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "fs.h"
@@ -28,6 +29,46 @@ int find_available_fd()
     return -1;
 }
 
+int find_dir_fcb(dir_t *dir, fcb_t *fcb)
+{
+    int retval = -1;
+
+    dir_t *parent_dir = (dir_t *)calloc(1, sizeof(blk_t));
+    if (!parent_dir)
+    {
+        report_error("calloc error");
+    }
+    pread(fd, parent_dir, sizeof(blk_t), offset_of(dir->parent_bid));
+
+    bool found = false;
+    for (int i = 0; i < parent_dir->item_num; ++i)
+    {
+        if (parent_dir->fcb[i].bid == dir->bid)
+        {
+            found = true;
+            memcpy(fcb, &parent_dir->fcb[i], sizeof(fcb_t));
+            // for root fcb
+            if (fcb->bid == root_bid)
+            {
+                strcpy(fcb->fname, "/");
+            }
+            break;
+        }
+    }
+
+    free(parent_dir);
+
+    if (!found)
+    {
+        report_error("Not found");
+    }
+
+    retval = 0;
+
+out:
+    return retval;
+}
+
 char *format_size(uint32_t size)
 {
     static char ssize[0xf] = {0};
@@ -52,39 +93,6 @@ char *format_size(uint32_t size)
     }
 
     return ssize;
-}
-
-char *get_dirname(dir_t *dir)
-{
-    static char name[FNAME_LENGTH + 1] = {0};
-
-    if (dir->bid == root_bid)
-    {
-        // root dir
-        strlcpy(name, "/", FNAME_LENGTH + 1);
-    }
-    else
-    {
-        dir_t *parent_dir = (dir_t *)malloc(sizeof(blk_t));
-        if (!parent_dir)
-        {
-            memset(name, 0, FNAME_LENGTH + 1);
-            return name;
-        }
-        pread(fd, parent_dir, sizeof(blk_t), offset_of(dir->parent_bid));
-        for (int i = 0; i < parent_dir->item_num; ++i)
-        {
-            if (parent_dir->fcb[i].bid == dir->bid)
-            {
-                strlcpy(name, parent_dir->fcb[i].fname, FNAME_LENGTH + 1);
-                break;
-            }
-        }
-
-        free(parent_dir);
-    }
-
-    return name;
 }
 
 char *get_abspath(dir_t *dir)
@@ -112,7 +120,12 @@ char *get_abspath(dir_t *dir)
 
         if (path[strlen(path) - 1] != '/')
             strlcat(path, "/", PATH_LENGTH);
-        strlcat(path, get_dirname(dir), PATH_LENGTH);
+
+        fcb_t fcb;
+        if (find_dir_fcb(dir, &fcb) >= 0) /* ignore error */
+        {
+            strlcat(path, fcb.fname, PATH_LENGTH);
+        }
 
         free(parent_dir);
     }
@@ -209,7 +222,16 @@ int parse_path(const char *path, dir_t *dir)
                         free(tmp);
                         report_error("Not a directory");
                     }
-                    pread(fd, tmp, sizeof(blk_t), offset_of(tmp->fcb[i].bid));
+
+                    if (fcb_symlink(&tmp->fcb[i]))
+                    {
+                        pread(fd, tmp, sizeof(blk_t), offset_of(tmp->fcb[i].src_bid));
+                    }
+                    else
+                    {
+                        pread(fd, tmp, sizeof(blk_t), offset_of(tmp->fcb[i].bid));
+                    }
+
                     if (!dir_check_magic(tmp))
                     {
                         free(tmp);
@@ -261,4 +283,17 @@ void split_path(const char *path, char **p, char **f)
 out:
     *p = head;
     *f = tail;
+}
+
+char *read_symlink(fcb_t *fcb)
+{
+    static char path[PATH_LENGTH] = {0};
+
+    if (!fcb_symlink(fcb))
+        return NULL;
+
+    memset(path, 0, PATH_LENGTH);
+    pread(fd, path, fcb->size, offset_of(fcb->bid));
+
+    return path;
 }

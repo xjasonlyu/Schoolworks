@@ -119,6 +119,7 @@ int main(int argc, char *argv[])
     strcpy(root_dir->fcb[0].fname, ".");
     root_dir->fcb[0].size = 0;
     root_dir->fcb[0].bid = root_dir->bid;
+    root_dir->fcb[0].src_bid = root_dir->bid;
     root_dir->fcb[0].attrs = EXIST_MASK | DIR_MASK;
     root_dir->fcb[0].created_time = time(NULL);
     root_dir->fcb[0].modified_time = root_dir->fcb[0].created_time;
@@ -127,6 +128,7 @@ int main(int argc, char *argv[])
     strcpy(root_dir->fcb[1].fname, "..");
     root_dir->fcb[1].size = 0;
     root_dir->fcb[1].bid = root_dir->parent_bid;
+    root_dir->fcb[1].src_bid = root_dir->parent_bid;
     root_dir->fcb[1].attrs = EXIST_MASK | DIR_MASK;
     root_dir->fcb[1].created_time = time(NULL);
     root_dir->fcb[1].modified_time = root_dir->fcb[0].created_time;

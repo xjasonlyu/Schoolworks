@@ -121,6 +121,7 @@ struct cmd_t cmd_map[] = {
     {"read", "read nbytes from offset via fd", (void (*)())sh_read, true, TYPE_ARG1_INT},
     {"rm", "remove file", (void (*)())fs_rm, true, TYPE_ARG1},
     {"rename", "rename file or directory", (void (*)())fs_rename, true, TYPE_ARG2},
+    {"symlink", "create symbol link of source file", (void (*)())fs_symlink, true, TYPE_ARG2},
     // {"quit", "alias to exit", (void (*)())sh_exit, false, TYPE_EXIT},
     {"exit", "exit this shell", (void (*)())sh_exit, false, TYPE_EXIT},
     {NULL, NULL, NULL, false, 0}};
