@@ -76,8 +76,10 @@ void sh_close(int);
 void sh_init();
 void sh_exit();
 void sh_clear();
-void sh_promot();
+void sh_prompt();
+void sh_system();
 
+void sig_handler(int);
 int parse_args();
 int read_input();
 int read_input_to_fs(int);
@@ -102,6 +104,7 @@ struct cmd_t cmd_map[] = {
     {"mount", "mount file system", (void (*)())sh_mount, false, TYPE_ARG1},
     {"umount", "unmount file system", (void (*)())sh_umount, false, TYPE_ARG0},
     {"clear", "clear the terminal screen", (void (*)())sh_clear, false, TYPE_ARG0},
+    {"system", "call system shell", (void (*)())sh_system, false, TYPE_ARG0},
     {"mkdir", "make directory", (void (*)())fs_mkdir, true, TYPE_ARG1},
     {"rmdir", "remove directory", (void (*)())fs_rmdir, true, TYPE_ARG1},
     {"stat", "show stat of disk", (void (*)())fs_stat, true, TYPE_ARG0},

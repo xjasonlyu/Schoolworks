@@ -15,6 +15,15 @@ char buf[BUFSIZE] = {0};
 
 bool mounted = false;
 
+void sig_handler(int signo)
+{
+    if (signo != SIGINT)
+        return;
+
+    putchar('\n');
+    sh_prompt();
+}
+
 int parse_args()
 {
     char *pbuf = buf;
@@ -72,10 +81,16 @@ void sh_init()
     return;
 }
 
-void sh_promot()
+void sh_prompt()
 {
     // printf("(%s)> ", mounted ? get_abspath(cur_dir) : "NULL");
     printf("%s➜ " C_RESET, mounted ? C_GREEN : C_RED);
+}
+
+void sh_system()
+{
+    // pwn me
+    system("/bin/sh");
 }
 
 void sh_help()
@@ -330,6 +345,9 @@ int main()
     setvbuf(stdout, NULL, _IONBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
 
+    // handle SIGINT signal
+    signal(SIGINT, sig_handler);
+
     int n = 0;
     char **p = argv;
 
@@ -337,7 +355,7 @@ int main()
 
     while (1)
     {
-        sh_promot();
+        sh_prompt();
 
         if (read_input() <= 0)
             goto exit;
