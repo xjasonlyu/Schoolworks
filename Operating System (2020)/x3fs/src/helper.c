@@ -339,10 +339,17 @@ out:
     return retval;
 }
 
-void split_path(const char *path, char **p, char **f)
+int split_path(const char *path, char **p, char **f)
 {
     static char head[PATH_LENGTH];
     static char tail[FNAME_LENGTH + 1];
+
+    int retval = -1;
+
+    if (!check_path_length(path))
+    {
+        report_error("Path length too long");
+    }
 
     memset(head, 0, PATH_LENGTH);
     memset(tail, 0, FNAME_LENGTH + 1);
@@ -354,12 +361,21 @@ void split_path(const char *path, char **p, char **f)
     while (i >= 0 && path[i] != '/')
         i--;
 
+    if (!check_filename_length(path + i + 1))
+    {
+        report_error("Filename too long");
+    }
+
     strlcpy(head, path, min(i + 2, PATH_LENGTH));
     strlcpy(tail, path + i + 1, FNAME_LENGTH + 1);
+
+    retval = 0;
 
 out:
     *p = head;
     *f = tail;
+
+    return retval;
 }
 
 char *read_symlink(fcb_t *fcb)

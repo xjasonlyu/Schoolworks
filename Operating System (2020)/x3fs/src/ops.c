@@ -12,7 +12,10 @@ int fs_mkdir(const char *path)
     int retval = -1;
 
     char *p, *f;
-    split_path(path, &p, &f);
+    if (split_path(path, &p, &f) < 0)
+    {
+        goto out;
+    }
 
     if (!check_filename(f))
     {
@@ -292,7 +295,10 @@ int fs_create(const char *path)
     int retval = -1;
 
     char *p, *f;
-    split_path(path, &p, &f);
+    if (split_path(path, &p, &f) < 0)
+    {
+        goto out;
+    }
 
     if (!check_filename(f))
     {

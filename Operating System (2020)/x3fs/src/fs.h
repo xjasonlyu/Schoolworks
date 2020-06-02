@@ -156,7 +156,7 @@ char *get_abspath(dir_t *);
 char *read_symlink(fcb_t *);
 bool check_filename(const char *);
 int parse_path(const char *, dir_t *);
-void split_path(const char *, char **, char **);
+int split_path(const char *, char **, char **);
 
 #ifdef __linux__
 size_t strlcat(char *,const char *,size_t);
