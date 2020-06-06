@@ -81,9 +81,9 @@ static ssize_t device_read(struct file *file,
     }
 
     /* 
-	 * Read functions are supposed to return the number
-	 * of bytes actually inserted into the buffer 
-	 */
+     * Read functions are supposed to return the number
+     * of bytes actually inserted into the buffer 
+     */
     return bytes_read;
 }
 
@@ -118,8 +118,8 @@ long device_ioctl(struct file *file,
                   unsigned long ioctl_param)
 {
     /* 
-	 * Switch according to the ioctl called 
-	 */
+     * Switch according to the ioctl called 
+     */
     switch (ioctl_num)
     {
     case IOCTL_FULL:
@@ -153,13 +153,13 @@ int init_module()
 {
     int ret_val;
     /* 
-	 * Register the character device (atleast try) 
-	 */
+     * Register the character device (atleast try) 
+     */
     ret_val = register_chrdev(MAJOR_NUM, DEVICE_NAME, &fops);
 
     /* 
-	 * Negative values signify an error 
-	 */
+     * Negative values signify an error 
+     */
     if (ret_val < 0)
     {
         printk(KERN_ALERT "register device failed with %d\n", ret_val);
@@ -177,10 +177,10 @@ int init_module()
 void cleanup_module()
 {
     /* 
-	 * Unregister the device 
-	 */
+     * Unregister the device 
+     */
     unregister_chrdev(MAJOR_NUM, DEVICE_NAME);
 }
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Jason Lyu"); 
+MODULE_AUTHOR("Jason Lyu");
