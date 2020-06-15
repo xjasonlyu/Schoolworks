@@ -8,6 +8,9 @@ KERNEL := /lib/modules/$(shell uname -r)/build
 
 all: xdev xdevctl
 
+debug: xdevctl
+	make EXTRA_CFLAGS=-D_DEBUG -C $(KERNEL) M=$(PWD) modules
+
 xdev:
 	make -C $(KERNEL) M=$(PWD) modules
 

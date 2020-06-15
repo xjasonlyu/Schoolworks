@@ -24,7 +24,7 @@ static long device_ioctl(struct file *, unsigned int, unsigned long);
 
 static int device_open(struct inode *inode, struct file *file)
 {
-#ifdef DEBUG
+#ifdef _DEBUG
     printk(KERN_INFO "device_open(%p)\n", file);
 #endif
 
@@ -39,7 +39,7 @@ static int device_open(struct inode *inode, struct file *file)
 
 static int device_release(struct inode *inode, struct file *file)
 {
-#ifdef DEBUG
+#ifdef _DEBUG
     printk(KERN_INFO "device_release(%p,%p)\n", inode, file);
 #endif
 
@@ -56,8 +56,8 @@ static ssize_t device_read(struct file *file,
 {
     int bytes_read = 0;
 
-#ifdef DEBUG
-    printk(KERN_INFO "device_read(%p,%p,%d)\n", file, buffer, length);
+#ifdef _DEBUG
+    printk(KERN_INFO "device_read(%p,%p,%ld)\n", file, buffer, length);
 #endif
 
     switch (cur_mode)
@@ -93,8 +93,8 @@ device_write(struct file *file,
 {
     int written = 0;
 
-#ifdef DEBUG
-    printk(KERN_INFO "device_write(%p,%s,%d)", file, buffer, length);
+#ifdef _DEBUG
+    printk(KERN_INFO "device_write(%p,%p,%ld)", file, buffer, length);
 #endif
 
     switch (cur_mode)
