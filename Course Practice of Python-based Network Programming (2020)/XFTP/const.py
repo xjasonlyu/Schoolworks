@@ -36,8 +36,10 @@ def code2text(code: int) -> str:
     else:
         return 'UNKNOWN'
 
+
 # CMD
 LIST = 0x00
 UPLOAD = 0x01
 DOWNLOAD = 0x02
 DELETE = 0x03
+NOTHING = 0xFF
