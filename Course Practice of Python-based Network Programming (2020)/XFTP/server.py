@@ -2,10 +2,10 @@
 import json
 import logging
 import os
+import random
 import socket
 import struct
 import threading
-import random
 
 from const import *
 
@@ -187,6 +187,12 @@ class Server:
         elif cmd == DOWNLOAD:
             go(lambda: self.handle_download(_id, file_name, addr, b''))
         elif cmd == DELETE:
+            pass
+        elif cmd == MOVE:
+            pass
+        elif cmd == MKDIR:
+            pass
+        elif cmd == NOTHING:
             pass
         else:
             logging.warning(f'unknown CMD {cmd} from {addr}')

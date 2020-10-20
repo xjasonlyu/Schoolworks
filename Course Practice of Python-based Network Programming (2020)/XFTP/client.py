@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-
-import os
-import sys
 import json
+import logging
+import os
 import socket
 import struct
-import logging
+import sys
 
 from const import *
 
