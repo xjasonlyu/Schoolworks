@@ -4,6 +4,7 @@
 **/.tmp/
 **/__pycache__/
 **/bin/
+**/venv/
 **/cmake-build-debug/
 **/*.out
 **/*.exe
