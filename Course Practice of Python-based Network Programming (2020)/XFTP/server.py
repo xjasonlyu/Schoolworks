@@ -5,6 +5,7 @@ import os
 import random
 import socket
 import struct
+import sys
 import threading
 
 from const import *
@@ -199,6 +200,7 @@ class Server:
         return
 
     def run_forever(self):
+        logging.info(f'XFTP serve {self.base} at: {self.host}:{self.port}')
         while True:
             packet, addr = self.s.recvfrom(BUF_SIZE)
             logging.debug(f'server recv from: {addr}')
@@ -206,7 +208,23 @@ class Server:
 
 
 def main():
-    server = Server(base='/Users/jason/Downloads/')
+    args = sys.argv
+    host = '127.0.0.1'
+    port = 2333
+    base = './'
+    if len(args) == 1:
+        pass
+    elif len(args) == 2:
+        base = args[1]
+    elif len(args) == 4:
+        host = args[1]
+        port = args[2]
+        base = args[3]
+    else:
+        print(f'Usage: {args[0]} <ip> <port> <base_path>')
+        return
+
+    server = Server(host, port, base)
     try:
         server.run_forever()
     except KeyboardInterrupt:
