@@ -2,8 +2,8 @@
 
 # XFTP (12X File Transport Protocol)
 # General
-# |    1 byte    | 1 byte | 1 byte | 8 byte |     1 byte       |  n byte   |
-# | MAGIC_NUMBER | STATUS |  CMD   |   ID   | FILE NAME LENGTH | FILE NAME |
+# |    1 byte    | 1 byte | 1 byte | 8 byte | n byte |
+# | MAGIC_NUMBER | STATUS |  CMD   |   ID   |  DATA  |
 
 # General
 BUF_SIZE = 4 << 10
