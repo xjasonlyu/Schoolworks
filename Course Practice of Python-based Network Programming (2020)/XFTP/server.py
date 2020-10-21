@@ -7,12 +7,15 @@ import socket
 import struct
 import sys
 import threading
+import time
 
 from const import *
 
 random.seed(os.urandom(8))
 
 logging.basicConfig(level=logging.DEBUG)
+
+_ = time
 
 
 def go(f):
@@ -140,6 +143,7 @@ class Server:
                 ts.sendto(d, addr)
                 if not d:
                     break
+                # time.sleep(0.5)
                 try:
                     ts.settimeout(TIMEOUT)
                     d, _addr = ts.recvfrom(BUF_SIZE)
@@ -218,7 +222,7 @@ def main():
         base = args[1]
     elif len(args) == 4:
         host = args[1]
-        port = args[2]
+        port = int(args[2])
         base = args[3]
     else:
         print(f'Usage: {args[0]} <ip> <port> <base_path>')

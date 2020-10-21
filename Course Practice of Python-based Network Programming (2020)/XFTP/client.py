@@ -130,7 +130,7 @@ class Client:
                     break
                 self.ack(addr)
                 f.write(d)
-                print('.', end='')
+                print('.', end='', flush=True)
         print(flush=True)
         logging.info('done!')
 
