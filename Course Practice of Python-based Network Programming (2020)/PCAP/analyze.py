@@ -19,6 +19,35 @@ class PktDirection(Enum):
     server_to_client = 2
 
 
+def draw(data):
+    ax = plt.gca()
+    for item in ax.spines.values():
+        item.set_color("none")
+    plt.title('TCP handshake process', fontsize=18)
+
+    fmt = 'flag={flag:<3s} seq={seq:<9d} ack={ack:<9d} len={len:<6d}'
+
+    plt.axis([0, 20, 0, 20])
+    plt.xticks([0, 20], [f"Client\n{client_ip}",
+                         f"Server\n{server_ip}"])
+    plt.yticks([])
+    plt.vlines(x=0, ymin=0, ymax=20, colors="black")
+    plt.vlines(x=20, ymin=0, ymax=20, colors="black")
+
+    plt.arrow(0, 19, 20, -5, length_includes_head=True, width=0.2, ec='red')
+    plt.text(10, 17, '(1) '+fmt.format(**
+                                       data[0]), horizontalalignment='center')
+
+    plt.arrow(20, 13, -20, -5, length_includes_head=True, width=0.2, ec='blue')
+    plt.text(10, 11, '(2) '+fmt.format(**
+                                       data[1]), horizontalalignment='center')
+
+    plt.arrow(0, 7, 20, -5, length_includes_head=True, width=0.2, ec='green')
+    plt.text(10, 5, '(3) '+fmt.format(**data[2]), horizontalalignment='center')
+
+    plt.show()
+
+
 def process_pcap(file_name):
     print(f"Opening {file_name}...")
 
@@ -155,31 +184,7 @@ def process_pcap(file_name):
 
     assert len(data) == 3
 
-    fmt = 'flag={flag:<3s} seq={seq:<9d} ack={ack:<9d} len={len:<6d}'
-    # line 1 points
-    x1 = [10, 30]
-    y1 = [30, 25]
-    plt.arrow(10, 30, 20, -4, width=0.05, ec='red')
-    plt.text(12, 28, '(1) '+fmt.format(**data[0]), horizontalalignment='left')
-    #plt.plot(x1, y1)
-    # line 2 points
-    x2 = [10, 30]
-    y2 = [20, 25]
-    plt.arrow(30, 25, -20, -4, width=0.05, ec='blue')
-    plt.text(28, 23, '(2) '+fmt.format(**data[1]), horizontalalignment='right')
-    # plt.plot(x2, y2)
-    # line 3 points
-    x3 = [10, 30]
-    y3 = [20, 15]
-    plt.arrow(10, 20, 20, -4, width=0.05, ec='green')
-    plt.text(12, 18, '(3) '+fmt.format(**data[2]), horizontalalignment='left')
-    # plt.plot(x3, y3)
-    plt.title('TCP handshake process')
-    # Hide x,y values
-    plt.xticks([])
-    plt.yticks([])
-    # Display a figure.
-    plt.show()
+    draw(data)
 
     # print(f'{tcp_packet_count} of {count} packets in total')
 
