@@ -9,3 +9,4 @@
 **/*.out
 **/*.exe
 **/*.pcapng
+**/*.pcap
