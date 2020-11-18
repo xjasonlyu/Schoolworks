@@ -29,7 +29,7 @@ def modular_inverse(e, t):
     return x % t
 
 
-def generate_keypair(p, q):
+def generate_keypair(p, q, e=0):
     assert p != q
     assert isPrime(p) and isPrime(q)
 
@@ -37,7 +37,8 @@ def generate_keypair(p, q):
 
     phi = (p-1) * (q-1)
 
-    e = getPrime(E_SIZE)
+    if not e:
+        e = getPrime(E_SIZE)
     assert e < phi
 
     # e & phi co-prime
@@ -78,19 +79,23 @@ def decrypt(private_key, ciphertext):
 
 
 def main():
+    # p = 329263086039022862010758005107860925059
+    # q = 312629737368228721811040745580846410531
+    # e = 17684950237965090779
     p = getPrime(KEY_SIZE)
     q = getPrime(KEY_SIZE)
-    print(f'p: {p}, q: {q}')
+    e = getPrime(E_SIZE)
+    print(f'p: {p}, q: {q}, e: {e}')
 
     print()
 
-    public_key, private_key = generate_keypair(p, q)
+    public_key, private_key = generate_keypair(p, q, e)
     print(f'pub_key: {public_key}')
     print(f'pri_key: {private_key}')
 
     print()
 
-    msg = b'hello world!'
+    msg = b'easy rsa!'
 
     ciphertext = encrypt(public_key, msg)
     print(f'ciphertext: {ciphertext}')
