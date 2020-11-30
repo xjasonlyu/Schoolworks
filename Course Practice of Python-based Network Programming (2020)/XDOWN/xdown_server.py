@@ -169,7 +169,7 @@ class AsyncSelectServer(BaseServer):
                 self.outputs.add(self.conn)
 
             elif self.stage == self.STAGE_RELAY:
-                buffsize = 128  # default size
+                buffsize = 4096  # default size
 
                 self.f.seek(self.N)  # goto last offset
                 data = self.f.read(buffsize)
