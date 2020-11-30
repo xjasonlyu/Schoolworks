@@ -53,6 +53,7 @@ class Client:
         assert len(hash) == 16
 
         m = md5()
+        n = 0
         with open(filename, 'wb') as f:
             while True:
                 data = self.s.recv(4096)
@@ -60,7 +61,12 @@ class Client:
                     break
                 f.write(data)
                 m.update(data)
+
+                n += len(data)
+                print(
+                    f'\rdownloading: {n:,} bytes received', end='', flush=True)
                 # print(f'read data: {data}')
+        print('\ndone!')
 
         if m.digest() != hash:
             raise ClientError('hash mismatch!')
