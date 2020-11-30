@@ -3,7 +3,8 @@
 import os
 import sys
 import socket
-from hashlib import md5
+import struct
+
 from protocol import *
 
 
@@ -49,10 +50,11 @@ class Client:
         else:
             raise ClientError(f'unknown REP code: {rep}')
 
-        hash = self.s.recv(16)
-        assert len(hash) == 16
+        buf = self.s.recv(8)
+        assert len(buf) == 8
 
-        m = md5()
+        file_size = struct.unpack('>Q', buf)[0]
+
         n = 0
         with open(filename, 'wb') as f:
             while True:
@@ -60,20 +62,24 @@ class Client:
                 if not data:
                     break
                 f.write(data)
-                m.update(data)
 
                 n += len(data)
-                print(
-                    f'\rdownloading: {n:,} bytes received', end='', flush=True)
+                self.progress_bar(n, file_size)
                 # print(f'read data: {data}')
         print('\ndone!')
 
-        if m.digest() != hash:
-            raise ClientError('hash mismatch!')
+        if n != file_size:
+            raise ClientError('uncompleted file!')
 
         # release resources
         self.s.close()
         self.s = None
+
+    @staticmethod
+    def progress_bar(n, all, width=40):
+        bar = '='*(round(n/all*width)-1)+'>' if n != all else '='*width
+        print(
+            f'\rXDOWN: [{bar.ljust(width)}] {(n/all)*100:.0f}%\t{n:,} bytes received', end='', flush=True)
 
     def download(self, remote_file, local_file):
         if len(remote_file) > 0xff:

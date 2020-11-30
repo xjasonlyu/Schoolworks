@@ -4,24 +4,19 @@ import os
 import sys
 import select
 import socket
+import struct
 import logging
 import threading
-from hashlib import md5
+
 from protocol import *
 
 
 logging.basicConfig(level=logging.DEBUG)
 
 
-def calc_md5(filename: str) -> bytes:
-    m = md5()
-    with open(filename, 'rb') as f:
-        while True:
-            data = f.read(1024)
-            if not data:
-                break
-            m.update(data)
-    return m.digest()
+def get_file_size(filename: str) -> bytes:
+    n = os.path.getsize(filename)
+    return struct.pack('>Q', n)
 
 
 class BaseServer:
@@ -66,10 +61,8 @@ class BaseServer:
         conn.sendall(bytearray([VERSION, REP_SUCCESS]))
         logging.info(f'download request: {filename}')
 
-        hash = calc_md5(filename)
-        logging.debug(f'calc md5 hash: {filename}: {hash.hex()}')
-
-        conn.sendall(hash)
+        file_size = get_file_size(filename)
+        conn.sendall(file_size)
 
         with open(filename, 'rb') as f:
             while True:
@@ -167,9 +160,8 @@ class AsyncSelectServer(BaseServer):
                 self.conn.sendall(bytearray([VERSION, REP_SUCCESS]))
                 logging.info(f'download request: {filename}')
 
-                hash = calc_md5(filename)
-                logging.debug(f'calc md5 hash: {filename}: {hash.hex()}')
-                self.conn.sendall(hash)
+                file_size = get_file_size(filename)
+                self.conn.sendall(file_size)
 
                 self.f = open(filename, 'rb')
                 self.stage = self.STAGE_RELAY
