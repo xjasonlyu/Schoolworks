@@ -1,3 +1,6 @@
 [submodule "C++ Object-Oriented Programming (2020)/xhttpd"]
 	path = C++ Object-Oriented Programming (2020)/xhttpd
 	url = https://github.com/xjasonlyu/xhttpd.git
+[submodule "Innovation Practice (2020)/hzbus"]
+	path = Innovation Practice (2020)/hzbus
+	url = https://github.com/WingLim/InnovationPractice.git
