@@ -40,7 +40,7 @@ func main() {
 		//	break
 		//}
 
-		if packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4).Protocol == 17 {
+		if l := packet.Layer(layers.LayerTypeIPv4); l != nil && l.(*layers.IPv4).Protocol == 17 {
 			printPacketInfo(packet)
 		}
 
